@@ -1,10 +1,11 @@
 <template>
-  <!-- A eimple editor with a sidebar -->
+  <!-- A eimple editor with a sidebar. Save on Ctrl+S -->
   <b-container 
     fluid
     class="px-0"
     v-if="doc"
     style="overflow: hidden"
+    @keydown.ctrl.s.prevent="save"
   >
     <!-- Toolbar -->
     <div 
@@ -322,46 +323,40 @@
             v-bind="{ disableFormatting }"
           />
 
-          <!-- Row with items aligned left -->
-          <b-row
-            class="mt-2"
-            align-h="start"
+          <div 
+            class="d-flex justify-content-start align-items-center sticky-top px-2 py-1 border"
+            style="gap: 1rem;"
           >
             <!-- Switch to disable formatting -->
-            <b-col>
-              <b-check
-                v-model="disableFormatting"
-                size="sm"
-                variant="outline-secondary"
-                switch
-              >
-                Disable formatting
-              </b-check>
-            </b-col>
+            <b-check
+              v-model="disableFormatting"
+              size="sm"
+              variant="outline-secondary"
+              switch
+            >
+              Disable formatting
+            </b-check>
             <!-- Button to copy content -->
-            <b-col>
-              <b-button
-                class="mt-2"
-                @click="
-                  copyToClipboard(
-                    removeComments(( historyPreview || doc ).content)
-                  )
-                "
-                size="sm"
-                variant="outline-secondary"
-              >
-                Copy to clipboard
-              </b-button>
-            </b-col>
+            <b-button
+              @click="
+                copyToClipboard(
+                  removeComments(( historyPreview || doc ).content)
+                )
+              "
+              size="sm"
+              variant="outline-secondary"
+            >
+              Copy to clipboard
+            </b-button>
             <!-- Wordcount in small text on the right -->
-            <b-col
-              class="small text-right text-muted"
+            <div
+              class="small ml-auto text-muted"
             >
               {{ wordcount }} {{ wordcount === 1 ? 'word' : 'words' }}
               <!-- Words per hour -->
               ~{{ Math.round(wordcount / ( historyPreview || doc ).time * 3600 / 10 ) * 10 }} words/hour
-            </b-col>
-          </b-row>
+            </div>
+          </div>
 
         </div>
 
@@ -438,7 +433,8 @@
         disableFormatting: false,
         console,
         document,
-        chartMode: 1
+        chartMode: 1,
+        saved: false,
       }
 
     },
@@ -675,6 +671,13 @@
 
       copyToClipboard( text ) {
         navigator.clipboard.writeText( text )
+        // Show bvtoast
+        this.$bvToast.toast( 'Copied to clipboard', {
+          title: 'Copied!',
+          autoHideDelay: 2000,
+          appendToast: true,
+          variant: 'success'
+        })
       },
 
       startDocTimer() {
@@ -739,6 +742,32 @@
         let result = new TextDecoder().decode( Uint8Array.from( resultBytes ) )
 
         return result
+
+      },
+
+      save() {
+            
+        // Save current content to history, creating it if it doesn't exist
+        let history = doc.history || this.$set( doc, 'history', [] )
+
+        // Push current content to history
+        let { time, content } = doc
+        history.push({
+          time,
+          content,
+          delta: history.length && this.withDelta( 'create', history[history.length - 1].content, content )
+        })
+
+        localStorage.setItem(`doc_${doc.id}`, JSON.stringify({
+          ...doc,
+          history: _.map(doc.history, ( item, i ) =>
+            // Remove 'content' for space saving
+            i ? _.omit( item, 'content' ) : item
+          )
+        }))
+
+        // Show a "Saved!" toast
+        this.saved = true
 
       },
 
@@ -807,39 +836,7 @@
           // Reset the idle timer
           clearTimeout( this.idleTimer )
 
-          this.idleTimer = setTimeout(() => {
-            
-            // Save current content to history, creating it if it doesn't exist
-            let history = doc.history || this.$set( doc, 'history', [] )
-
-            // Push current content to history
-            let { time, content } = doc
-            history.push({
-              time,
-              content,
-              delta: history.length && this.withDelta( 'create', history[history.length - 1].content, content )
-            })
-
-            localStorage.setItem(`doc_${doc.id}`, JSON.stringify({
-              ...doc,
-              history: _.map(doc.history, ( item, i ) =>
-                // Remove 'content' for space saving
-                i ? _.omit( item, 'content' ) : item
-              )
-            }))
-
-            // Show a "Saved!" toast
-            this.$root.$bvToast.toast(
-              'Saved!',
-              {
-                title: 'Saved!',
-                autoHideDelay: 500,
-                variant: 'success'
-              }
-            )
-
-
-          }, 5000)
+          this.idleTimer = setTimeout(this.save, 5000)
 
           // Start doc timer
           if ( this.autoStartDocTimer )
@@ -849,24 +846,18 @@
 
       },
 
-      // doc: {
+      doc: {
 
-      //   // Write to localStorage under key = 'doc_[doc.id]'
-      //   handler(doc) {
+        // Write to localStorage under key = 'doc_[doc.id]'
+        handler() {
           
-      //     localStorage.setItem(`doc_${doc.id}`, JSON.stringify({
-      //       ...doc,
-      //       history: _.map(doc.history, ( item, i ) =>
-      //         // Remove 'content' for space saving
-      //         i ? _.omit( item, 'content' ) : item
-      //       )
-      //     }))
+          this.saved = false
 
-      //   },
+        },
 
-      //   deep: true
+        deep: true
 
-      // },
+      },
 
       docs: {
 
