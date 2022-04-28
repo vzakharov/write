@@ -1,5 +1,5 @@
 <template>
-  <!-- A simple editor with a sidebar -->
+  <!-- A eimple editor with a sidebar -->
   <b-container 
     fluid
     class="px-0"
@@ -92,17 +92,9 @@
             cols="9"
             class="p-2"
             v-text="
-              d.content.trim().replace(/\n+/g, ' / ')
+              computeTitle(d)
               || 
-              // Created date and time written as e.g. 'Thu, Apr 10, 10:00 am'
-              new Date(d.created).toLocaleString('en-US', {
-                weekday: 'short',
-                month: 'short',
-                day: 'numeric',
-                hour: 'numeric',
-                minute: 'numeric',
-                hour12: true
-              })
+              createdDateAndTime(d)
             "
             :style="{
               //'cursor: pointer; overflow: hidden; white-space: nowrap; text-overflow: ellipsis': true,
@@ -293,6 +285,18 @@
             Prune history
           </b-button>
 
+          <!-- Switch chart mode -->
+          <b-check
+            v-model="chartMode"
+            :value="0"
+            :unchecked-value="1"
+            switch
+            class="mt-2"
+            size="sm"
+            variant="outline-secondary"
+          >
+            Show wph vs words
+          </b-check>
 
         </template>
 
@@ -318,9 +322,13 @@
             v-bind="{ disableFormatting }"
           />
 
-          <b-row>
+          <!-- Row with items aligned left -->
+          <b-row
+            class="mt-2"
+            align-h="start"
+          >
+            <!-- Switch to disable formatting -->
             <b-col>
-              <!-- Switch to disable formatting -->
               <b-check
                 v-model="disableFormatting"
                 size="sm"
@@ -329,6 +337,21 @@
               >
                 Disable formatting
               </b-check>
+            </b-col>
+            <!-- Button to copy content -->
+            <b-col>
+              <b-button
+                class="mt-2"
+                @click="
+                  copyToClipboard(
+                    removeComments(( historyPreview || doc ).content)
+                  )
+                "
+                size="sm"
+                variant="outline-secondary"
+              >
+                Copy to clipboard
+              </b-button>
             </b-col>
             <!-- Wordcount in small text on the right -->
             <b-col
@@ -376,6 +399,24 @@
 
   export default {
 
+    head() {
+
+      let 
+        preTitle = '',
+        { doc } = this
+
+      if ( doc )
+        preTitle = (
+          this.computeTitle(this.doc) || this.createdDateAndTime( this.doc?.created )
+        ) + ' · '
+
+      return {
+        // Extract first line from doc content (starting and ending with a \w). Otherwise take created
+        title: preTitle + 'Write.'
+      }
+
+    },
+
     data() {
 
       return {
@@ -396,7 +437,8 @@
         autoStartDocTimer: true,
         disableFormatting: false,
         console,
-        document
+        document,
+        chartMode: 1
       }
 
     },
@@ -528,19 +570,29 @@
 
       chartConfig() {
 
+        let { 
+          chartMode
+        } = this
+
         return {
           type: 'scatter',
           data: {
             datasets: [
               {
-                label: 'Words vs minutes',
+                label: chartMode ?  'Words vs minutes' : 'Words per hour vs words',
                 backgroundColor: 'rgba(54,162,235,0.2)',
                 borderColor: 'rgba(54,162,235,1)',
                 data: [
                   ...this.doc.history?.map( ({ time, content }) => {
-                    return {
+
+                    let words = this.getWordcount( content )
+
+                    return chartMode ? {
                       x: time/60,
-                      y: this.getWordcount( content )
+                      y: words
+                    } : {
+                      x: words,
+                      y: words / ( time / 3600 )
                     }
                   }),
                   // ...!this.historyPreview && this.doc.time && this.wordcount ? [{ x: this.doc.time/60, y: this.wordcount }] : []
@@ -586,6 +638,22 @@
     },
 
     methods: {
+
+      computeTitle(doc) {
+        return doc?.content?.match(/\w.*\w/)?.[0]
+      },
+
+      createdDateAndTime(d) {
+        // Created date and time written as e.g. 'Thu, Apr 10, 10:00 am'
+        return new Date(d.created).toLocaleString('en-US', {
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: 'numeric',
+          hour12: true
+        })
+      },
 
       pruneHistory() {
 
@@ -635,15 +703,30 @@
 
       },
 
+      removeComments( content ) {
+        // Remove any content within /* */ (including newlines) for the sake of wordcount
+        content = content.replace( /\/\*[\s\S]*?\*\//g, '' )
+
+        // Convert any >3 newlines to 2 newlines
+        content = content.replace( /\n{3,}/g, '\n\n' )
+
+        content = content.trim()
+
+        return content
+      },
+
       getWordcount( content ) {
 
         if ( !(content?.trim()) )
           return 0
 
         // Strip HTML tags
-        let stripped = content.replace( /<[^>]+>/g, ' ' )
+        // let stripped = content.replace( /<[^>]+>/g, ' ' )
         // console.log('stripped', stripped)
-        let words = stripped.split( /\W+/ ).filter( word => word.trim() )
+
+        content = this.removeComments(content)
+
+        let words = content.split( /[^\w-]+/ ).filter( word => word.trim() )
         // console.log('words', words)
         return words.length
 

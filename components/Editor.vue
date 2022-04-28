@@ -78,7 +78,7 @@
               } else {
 
                 let
-                  boldOrItalicRegex = /(\*{1,2})(.*?)(\*{1,2})/g,
+                  boldOrItalicRegex = /(\*{1,2})(\S.*?\S)(\*{1,2})/g,
                   boldOrItalic = boldOrItalicRegex.exec(paragraph)?.[1].length,
                   linkRegex = /(\[)(.+?)(\]\(.+?\))/g,
                   highlightRegex = /(==)(.+?)(==)/g
@@ -109,6 +109,9 @@
             return `<${tag}${attributes}>${paragraph}</${tag}>`
 
           }).join('\n')
+
+          // Enclose any content within /* */ (including newlines) in <small> tags and add a .comment class
+          content = content.replace(/\/\*[\s\S]*?\*\//g, `<small class="comment">$&</small>`)
           
           return content
 
@@ -142,7 +145,7 @@
 <style scoped>
 
   #editor {
-    font-size: 1.2em;
+    font-size: 1.1em;
     font-family: 'Sorts Mill Goudy', 'Georgia', serif;
     /* Rounded shadow, no borders */
     border-radius: 5px;
@@ -157,5 +160,21 @@
     margin-top: 1.5em;
     margin-bottom: 0.5em;
   }
+
+  * >>> .comment {
+    /* Gray-green color */
+    color: #5f9ea0;
+  }
+
+  /* Indent li */
+  * >>> li {
+    margin-left: 1em;
+  }
+
+  /* Add a margin-top to a p after an li */
+  * >>> li + p {
+    margin-top: 1em;
+  }
+  
 
 </style>
