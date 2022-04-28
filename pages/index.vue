@@ -31,6 +31,7 @@
           } else {
             window.clearInterval(docTimer)
             docTimer = null
+            saved = false
           }
         }"
         size="sm"
@@ -227,6 +228,7 @@
                     doc.history = without(doc.history, item)
                     // recalculate delta
                     $set( doc.history[i], 'delta', withDelta( 'create', doc.history[i-1].content, doc.history[i].content ) )
+                    saved = false
                   }
                 }"
               />
@@ -346,8 +348,19 @@
               size="sm"
               variant="outline-secondary"
             >
-              Copy to clipboard
+              Copy
             </b-button>
+
+            <!-- Save button -->
+            <b-button
+              @click="save"
+              size="sm"
+              :variant="saved ? 'light' : 'outline-danger'"
+              :disabled="saved"
+            >
+              {{ saved ? 'All changes saved.' : 'Save' }}
+            </b-button>
+
             <!-- Wordcount in small text on the right -->
             <div
               class="small ml-auto text-muted"
@@ -434,7 +447,7 @@
         console,
         document,
         chartMode: 1,
-        saved: false,
+        saved: true,
       }
 
     },
@@ -468,9 +481,17 @@
       // Monitor innerWidth to toggle sidebar
       window.addEventListener('resize', onResize)
 
+      // If the user intends to leave, check if there are unsaved changes and ask if they want to save
+      window.onbeforeunload = event => {
+        event.preventDefault()
+        if ( !this.saved ) {
+          return 'You have unsaved changes. Are you sure you want to leave?'
+        }
+      }
+      console.log('beforeunload listener added')
+
       this.window = window
 
-      
       this.mounted = true
 
       this.$nextTick(() => {
@@ -660,6 +681,7 @@
           let timeBetween = history[i].time - history[i-1].time
           if ( timeBetween < 60 ) {
             this.$delete( history, i )
+            this.saved = false
           } else {
             // recalculate delta
             this.$set( history[i], 'delta', this.withDelta( 'create', history[i-1].content, history[i].content ) )
@@ -746,6 +768,8 @@
       },
 
       save() {
+
+        let { doc } = this
             
         // Save current content to history, creating it if it doesn't exist
         let history = doc.history || this.$set( doc, 'history', [] )
@@ -767,7 +791,8 @@
         }))
 
         // Show a "Saved!" toast
-        this.saved = true
+        console.log('Saved!')
+        this.$nextTick( () => this.saved = true )
 
       },
 
@@ -830,8 +855,11 @@
           // Exit if the doc itself is different (not just content)
           if ( this.docChanged ) {
             this.docChanged = false
+            this.saved = true
             return
           }
+
+          this.saved = false
 
           // Reset the idle timer
           clearTimeout( this.idleTimer )
@@ -843,19 +871,6 @@
             this.startDocTimer()
 
         }
-
-      },
-
-      doc: {
-
-        // Write to localStorage under key = 'doc_[doc.id]'
-        handler() {
-          
-          this.saved = false
-
-        },
-
-        deep: true
 
       },
 
