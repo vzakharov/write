@@ -275,8 +275,10 @@
                   if ( window.confirm('Are you sure? THERE IS NO UNDO!') ) {
                     let i = doc.history.indexOf(item)
                     doc.history = without(doc.history, item)
-                    // recalculate delta
-                    $set( doc.history[i], 'delta', withDelta( 'create', doc.history[i-1].content, doc.history[i].content ) )
+                    // recalculate delta unless it's the last item
+                    if ( i < doc.history.length ) {
+                      $set( doc.history[i], 'delta', withDelta( 'create', doc.history[i-1].content, doc.history[i].content ) )
+                    }
                     saved = false
                   }
                 }"
@@ -344,7 +346,8 @@
 
 
           <Editor 
-            v-model="(historyPreview || doc).content"
+            :value="(historyPreview || doc).content"
+            @input="!historyPreview && ( doc.content = $event )"
             :refresh="historyPreview && historyPreview.time || doc.id"
             :disabled="historyPreview"
             v-bind="{ disableFormatting }"
