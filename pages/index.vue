@@ -69,14 +69,14 @@
       :style="{
         '--full-height': `calc(100vh - ${workspaceTop}px)`,
       }"
-      class="full-height px-2"
+      class="full-height m-0"
     >
       <!-- Sidebar, toggleable. On small screens, it has absolute positioning -->
       <b-col
         v-show="showSidebar"
         :class="{
           'position-absolute': width < 768,
-          'cool-shadow bg-white full-height': true
+          'cool-shadow bg-white full-height p-2': true
         }"
         :style="{
           opacity: width < 768 && 0.9,
@@ -90,6 +90,7 @@
         <b-row
           v-for="(d, key) in docs"
           :key="key"
+          class="m-0"
         >
           <b-col
             cols="9"
@@ -702,7 +703,7 @@
       },
 
       computeTitle(doc) {
-        return doc?.content?.match(/[\w\s-]+/)?.[0]
+        return doc?.content?.match(/\w[\w\s-]*\w|\w/)?.[0]
       },
 
       createdDateAndTime(d) {
