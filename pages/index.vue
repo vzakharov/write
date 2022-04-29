@@ -21,7 +21,6 @@
       >
         ≡
       </b-button>
-
       <!-- Start/stop doc timer -->
       <b-button
         class="m-1"
@@ -33,7 +32,7 @@
             docTimer = null
             saved = false
             // Set favicon to a regular icon
-            setFavicon('/favicon.png')
+            setFavicon('./favicon.png')
           }
         }"
         size="sm"
@@ -703,7 +702,7 @@
       },
 
       computeTitle(doc) {
-        return doc?.content?.match(/\w.*\w/)?.[0]
+        return doc?.content?.match(/[\w\s-]+/)?.[0]
       },
 
       createdDateAndTime(d) {
@@ -760,7 +759,7 @@
           }, 1000)
 
         // Set favicon to a play  icon
-        this.setFavicon('/red-play-button.png')
+        this.setFavicon('./red-play-button.png')
 
 
       },
