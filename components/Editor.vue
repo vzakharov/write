@@ -54,6 +54,7 @@
               headingRegex = /^(#+) /,
               headingLevel = headingRegex.exec(paragraph)?.[1].length,
               bulletRegex = /^([\*-])\s+/,
+              numberedRegex = /^(\d+)\.\s+/,
               ctaRegex = /^(\[)(.+)(\])$/
 
             if ( !this.disableFormatting ) {
@@ -66,6 +67,12 @@
               } else if ( bulletRegex.test(paragraph) ) {
                 tag = 'li'
                 paragraph = paragraph.replace( bulletRegex, grayOut('$1 ') )
+              } else if ( numberedRegex.test(paragraph) ) {
+                tag = 'p'
+                attributes = ' class="pseudo-li"'
+                paragraph = paragraph.replace( numberedRegex, 
+                  '<span style="width: 1em; display: inline-block;"><strong>$1</strong>.&nbsp;</span>'
+                )
               } else if ( ctaRegex.test(paragraph) ) {
                 paragraph = paragraph.replace( ctaRegex, 
                   `<button class="btn btn-primary">${grayOut('$1')}$2${grayOut('$3')}</button>`
@@ -79,9 +86,7 @@
 
                 let
                   boldOrItalicRegex = /(\*{1,2})(\S.*?\S)(\*{1,2})/g,
-                  boldOrItalic = boldOrItalicRegex.exec(paragraph)?.[1].length,
-                  linkRegex = /(\[)(.+?)(\]\(.+?\))/g,
-                  highlightRegex = /^(=+) (.+?) (=+)$/
+                  boldOrItalic = boldOrItalicRegex.exec(paragraph)?.[1].length
 
                 if ( boldOrItalic ) {
                   let formatTag = ['em', 'strong'][boldOrItalic - 1]
@@ -89,29 +94,42 @@
                     `${grayOut('$1')}<${formatTag}>$2</${formatTag}>${grayOut('$3')}`
                   )
                 }
-                
+
+                let linkRegex = /(\[)(.+?)(\]\(.+?\))/g
+
                 if ( linkRegex.test(paragraph) ) {
                   paragraph = paragraph.replace( linkRegex, 
                     `${grayOut('$1')}<a href="$4">$2</a>${grayOut('$3')}`
                   )
                 }
 
+                let highlightRegex = /^(=+) (.+?) (=+)$/
+
                 if ( highlightRegex.test(paragraph) ) {
                   let numOfEqualSigns = paragraph.match(highlightRegex)?.[1].length
                   let highlightColorsByLevel = [
-                    // Top level: pleasantly pink
-                    '#ffb3ff',
-                    // Second level: light blue
-                    '#b3d9ff',
-                    // Third level: light green
+                    // light green
                     '#b3ffd9',
-                    // Fourth level: light yellow
+                    // light yellow
                     '#ffffb3',
+                    // light blue
+                    '#b3d9ff',
+                    // pleasantly pink
+                    '#ffb3ff',
                   ]
                   paragraph = paragraph.replace( highlightRegex, 
                     `${grayOut('$1')}<mark style="background-color: ${highlightColorsByLevel[numOfEqualSigns - 1]}"> $2 </mark>${grayOut('$3')}`
                   )
                 }
+
+                let blockquoteRegex = /^(>\s+)(.+)/
+
+                if ( blockquoteRegex.test(paragraph) ) {
+                  paragraph = paragraph.replace( blockquoteRegex, 
+                    `<blockquote>${grayOut('$1')}$2</blockquote>`
+                  )
+                }
+
 
               }
 
@@ -204,6 +222,12 @@
     margin-left: 1em;
   }
 
+  * >>> .pseudo-li {
+    /* Gray-green color */
+    margin-left: 3em;
+    text-indent: -1em;
+  }
+
   /* Add a margin-top to a p after an li */
   * >>> li + p {
     margin-top: 1em;
@@ -245,6 +269,13 @@
     background-color: inherit;
     font-size: 75%;
     border: 0;
+  }
+
+  * >>> blockquote {
+    /* Border on the left + indent */
+    border-left: 4px solid #ddd;
+    margin-left: 1em;
+    padding-left: 1em;
   }
   
 
