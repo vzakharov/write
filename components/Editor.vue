@@ -53,7 +53,7 @@
               attributes = '',
               headingRegex = /^(#+) /,
               headingLevel = headingRegex.exec(paragraph)?.[1].length,
-              bulletRegex = /^(\*) /,
+              bulletRegex = /^([\*-])\s+/,
               ctaRegex = /^(\[)(.+)(\])$/
 
             if ( !this.disableFormatting ) {
@@ -81,7 +81,7 @@
                   boldOrItalicRegex = /(\*{1,2})(\S.*?\S)(\*{1,2})/g,
                   boldOrItalic = boldOrItalicRegex.exec(paragraph)?.[1].length,
                   linkRegex = /(\[)(.+?)(\]\(.+?\))/g,
-                  highlightRegex = /(==)(.+?)(==)/g
+                  highlightRegex = /^(=+) (.+?) (=+)$/
 
                 if ( boldOrItalic ) {
                   let formatTag = ['em', 'strong'][boldOrItalic - 1]
@@ -97,8 +97,19 @@
                 }
 
                 if ( highlightRegex.test(paragraph) ) {
+                  let numOfEqualSigns = paragraph.match(highlightRegex)?.[1].length
+                  let highlightColorsByLevel = [
+                    // Top level: pleasantly pink
+                    '#ffb3ff',
+                    // Second level: light blue
+                    '#b3d9ff',
+                    // Third level: light green
+                    '#b3ffd9',
+                    // Fourth level: light yellow
+                    '#ffffb3',
+                  ]
                   paragraph = paragraph.replace( highlightRegex, 
-                    `${grayOut('$1')}<mark>$2</mark>${grayOut('$3')}`
+                    `${grayOut('$1')}<mark style="background-color: ${highlightColorsByLevel[numOfEqualSigns - 1]}"> $2 </mark>${grayOut('$3')}`
                   )
                 }
 
@@ -115,7 +126,7 @@
 
           // Make all content within {{}} hidden, witht he ability to switch back and forth
           content = content.replace(/(<p>{{<\/p>)([\s\S]*?)(<p>}}<\/p>)/g,
-            '<div class="pre-hide" data-show="👀">$1</div><div class="hide muffled">$2</div><div>$3</div>')
+            '<div class="pre-hide" data-show="👀">$1</div><div class="hide muffled">$2</div><div class="post-hide">$3</div>')
 
           // For every .pre-hide span, add an onclick event that toggles the .hide div
           this.$nextTick(() => document.querySelectorAll('.pre-hide').forEach( div => {
@@ -152,10 +163,10 @@
 
       content() {
         // Scroll to bottom of editor
-        this.$nextTick(() => {
-          let editor = document.getElementById('editor')
-          editor.scrollTop = editor.scrollHeight
-        })
+        // this.$nextTick(() => {
+        //   let editor = document.getElementById('editor')
+        //   editor.scrollTop = editor.scrollHeight
+        // })
       }
       
     }
@@ -209,6 +220,13 @@
     content: attr(data-show);
     color: #5f9ea0;
     font-family: sans-serif;
+    font-size: 0.8em;
+  }
+
+  * >>> .pre-hide, * >>> .post-hide, * >>> .pre-hide p, * >>> .post-hide p {
+    display: inline;
+    /* Gray and small*/
+    color: #ccc;
     font-size: 0.8em;
   }
 

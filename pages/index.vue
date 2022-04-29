@@ -169,6 +169,19 @@
             {{ showHistoryChart ? 'Table' : 'Chart' }}
           </b-button>
 
+          <!-- Select for chartAxes (options: minutes vs words, minutes vs wph, words vs wph) -->
+          <b-select
+            v-if="showHistoryChart"
+            class="mt-2"
+            v-model="chartAxes"
+            size="sm"
+            variant="outline-secondary"            
+            :options="[
+              { value: ['minutes', 'words'], text: 'X: minutes, Y: words' },
+              { value: ['minutes', 'wph'], text: 'X: minutes, Y: words per hour' },
+              { value: ['words', 'wph'], text: 'X: words, Y: words per hour' },
+            ]"
+          />
           <canvas
             :style="{
               display: showHistoryChart ? 'block' : 'none'
@@ -311,19 +324,6 @@
           >
             Prune history
           </b-button>
-
-          <!-- Switch chart mode -->
-          <b-check
-            v-model="chartMode"
-            :value="0"
-            :unchecked-value="1"
-            switch
-            class="mt-2"
-            size="sm"
-            variant="outline-secondary"
-          >
-            Show wph vs words
-          </b-check>
 
         </template>
 
@@ -488,6 +488,7 @@
         console,
         document,
         chartMode: 1,
+        chartAxes: ['minutes', 'words'],
         saved: true,
       }
 
@@ -629,45 +630,52 @@
       chartConfig() {
 
         let { 
-          chartMode
+          doc, chartAxes,
         } = this
+
+        let data = doc.history.map( ({ time, content }) => {
+          let words = this.getWordcount( content )
+          return {
+            minutes: time / 60,
+            words,
+            wph: words / ( time / 3600 )
+          }
+        } )
 
         return {
           type: 'scatter',
           data: {
             datasets: [
               {
-                label: chartMode ?  'Words vs minutes' : 'Words per hour vs words',
+                label: `${chartAxes[0]} vs ${chartAxes[1]}`,
                 backgroundColor: 'rgba(54,162,235,0.2)',
                 borderColor: 'rgba(54,162,235,1)',
                 data: [
-                  ...this.doc.history?.map( ({ time, content }) => {
-
-                    let words = this.getWordcount( content )
-
-                    return chartMode ? {
-                      x: time/60,
-                      y: words
-                    } : {
-                      x: words,
-                      y: words / ( time / 3600 )
-                    }
-                  }),
+                  ...data?.map( item => ({
+                    x: item[chartAxes[0]],
+                    y: item[chartAxes[1]]
+                  }) ),
                   // ...!this.historyPreview && this.doc.time && this.wordcount ? [{ x: this.doc.time/60, y: this.wordcount }] : []
                 ]
               }
             ]
           },
           options: {
+            // Do not show dataset label
+            plugins: {
+              legend: {
+                display: false
+              }
+            },
             // Disable animation
             animation: {
               duration: 0,
             },
             // x and y min is 0
             scales: {
-              x: {
-                min: 0
-              },
+              // x: {
+              //   min: 0
+              // },
               y: {
                 min: 0
               }
@@ -700,6 +708,8 @@
       setFavicon( href ) {
         const link = document.querySelector('link[rel="icon"]')
         link.href = href
+        // log the current favicon
+        console.log( link.href )
       },
 
       computeTitle(doc) {
@@ -720,12 +730,12 @@
 
       pruneHistory() {
 
-        // Remove all history items whose time is spaced less than 1/60 of doc.time apart
+        // Remove all history items whose time is spaced less than 1/60 of the difference between doc.time and the first item's time
         let { history } = this.doc
         let i = 1
         while ( i < history.length ) {
           let timeBetween = history[i].time - history[i-1].time
-          if ( timeBetween < this.doc.time / 60 ) {
+          if ( timeBetween < ( this.doc.time - history[0].time ) / 60 ) {
             this.$delete( history, i )
             this.saved = false
           } else {
@@ -754,13 +764,15 @@
           this.$set( this.doc, 'time', 0 )
         }
 
-        if ( !this.docTimer )
+        if ( !this.docTimer ) {
           this.docTimer = setInterval(() => {
             this.doc.time += 1
           }, 1000)
 
-        // Set favicon to a play  icon
-        this.setFavicon('./red-play-button.png')
+          // Set favicon to a play  icon
+          this.setFavicon('./red-play-button.png')
+
+        }
 
 
       },
@@ -781,6 +793,9 @@
       removeComments( content ) {
         // Remove any content within /* */ (including newlines) for the sake of wordcount
         content = content.replace( /\/\*[\s\S]*?\*\//g, '' )
+
+        // Remove any content within ^==...==$ (any number of equal signs) for the sake of wordcount
+        content = content.replace( /^=+.+?=+$/gm, '' )
 
         // Convert any >3 newlines to 2 newlines
         content = content.replace( /\n{3,}/g, '\n\n' )
@@ -918,7 +933,7 @@
 
           // Start doc timer
           if ( this.autoStartDocTimer )
-            this.startDocTimer()
+            this.$nextTick(() => this.startDocTimer())
 
         }
 
