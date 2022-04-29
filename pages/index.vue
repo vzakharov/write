@@ -32,6 +32,8 @@
             window.clearInterval(docTimer)
             docTimer = null
             saved = false
+            // Set favicon to a regular icon
+            setFavicon('/favicon.png')
           }
         }"
         size="sm"
@@ -182,7 +184,8 @@
             :fields="[
               {
                 key: 'time',
-                label: 'Time'
+                label: 'Time',
+                formatter: timeAsHHMMSS
               },
               {
                 key: 'content',
@@ -194,6 +197,37 @@
                 label: ''
               }
             ]"
+            @row-clicked="item => {
+              if ( historyPreviewFixed && historyPreview == item) {
+                historyPreview = null
+                historyPreviewFixed = false
+              } else {
+                historyPreview = item
+                historyPreviewFixed = true
+              }
+            }"
+            @row-hovered="item => {
+              if ( !historyPreviewFixed ) {
+                historyPreview = item
+                window.clearTimeout(historyPreviewTimeout)
+              }
+            }"
+            @row-unhovered="item => {
+              historyPreviewTimeout = window.setTimeout(() => {
+                if ( !historyPreviewFixed && historyPreview === item ) {
+                  historyPreview = null
+                }
+              }, 1000)
+            }"
+            :tbody-tr-class="item => {
+              return 'cursor-pointer ' + (
+                historyPreview === item ?
+                  historyPreviewFixed ?
+                    'fixed-tr' :
+                    'hovered-tr'
+                  : '' 
+                )
+            }"
           >
 
             <template #cell(time)="{ item }">
@@ -206,14 +240,16 @@
                 }"
                 @click="
                   historyPreview = item
+                  historyPreviewFixed = true
                 "
                 @mouseover="
                   historyPreview = item
                 "
                 @mouseleave="
-                  window.setTimeout(() => {
-                    historyPreview == item && ( historyPreview = null )
-                  }, 1000)
+                  if ( !historyPreviewFixed )
+                    window.setTimeout(() => {
+                      historyPreview == item && ( historyPreview = null )
+                    }, 1000)
                 "
               />
             </template>
@@ -235,18 +271,6 @@
             </template>
 
           </b-table>
-          <!-- Button to exit preview -->
-          <b-button
-            v-if="historyPreview"
-            class="mt-2"
-            @click="
-              historyPreview = null
-            "
-            size="sm"
-            variant="outline-secondary"
-          >
-            Exit preview
-          </b-button>
           
           <!-- Clear history button -->
           <b-button
@@ -322,6 +346,7 @@
           <Editor 
             v-model="(historyPreview || doc).content"
             :refresh="historyPreview && historyPreview.time || doc.id"
+            :disabled="historyPreview"
             v-bind="{ disableFormatting }"
           />
 
@@ -359,6 +384,20 @@
               :disabled="saved"
             >
               {{ saved ? 'All changes saved.' : 'Save' }}
+            </b-button>
+
+            <!-- Button to exit preview -->
+            <b-button
+              v-if="historyPreview && historyPreviewFixed"
+              class="mt-2"
+              @click="
+                historyPreview = null
+                historyPreviewFixed = false
+              "
+              size="sm"
+              variant="outline-secondary"
+            >
+              Exit preview
             </b-button>
 
             <!-- Wordcount in small text on the right -->
@@ -440,6 +479,8 @@
         docTimer: null,
         idleTimer: null,
         historyPreview: null,
+        historyPreviewFixed: false,
+        historyPreviewTimeout: null,
         showHistoryChart: true,
         historyChart: null,
         autoStartDocTimer: true,
@@ -475,7 +516,7 @@
       const onResize = () => {
         this.width = window.innerWidth
         this.workspaceTop = document.getElementById('workspace').offsetTop
-        this.showSidebar = this.width >= 768
+        // this.showSidebar = this.width >= 768
       }
 
       // Monitor innerWidth to toggle sidebar
@@ -656,6 +697,11 @@
 
     methods: {
 
+      setFavicon( href ) {
+        const link = document.querySelector('link[rel="icon"]')
+        link.href = href
+      },
+
       computeTitle(doc) {
         return doc?.content?.match(/\w.*\w/)?.[0]
       },
@@ -674,12 +720,12 @@
 
       pruneHistory() {
 
-        // Remove all history items whose time is spaced less than 60 seconds apart
+        // Remove all history items whose time is spaced less than 1/60 of doc.time apart
         let { history } = this.doc
         let i = 1
         while ( i < history.length ) {
           let timeBetween = history[i].time - history[i-1].time
-          if ( timeBetween < 60 ) {
+          if ( timeBetween < this.doc.time / 60 ) {
             this.$delete( history, i )
             this.saved = false
           } else {
@@ -712,6 +758,10 @@
           this.docTimer = setInterval(() => {
             this.doc.time += 1
           }, 1000)
+
+        // Set favicon to a play  icon
+        this.setFavicon('/red-play-button.png')
+
 
       },
 
@@ -916,6 +966,20 @@
 
 .cool-shadow {
   box-shadow: rgba(50, 50, 93, 0.25) 0px 2px 5px -1px, rgba(0, 0, 0, 0.3) 0px 1px 3px -1px;
+}
+
+.hovered-tr {
+  /* Yellow highlight for hovered rows */
+  background-color: #f0f68c;
+}
+
+.fixed-tr {
+  /* Green highlight for fixed rows */
+  background-color: #c8e6c9;
+}
+
+.cursor-pointer {
+  cursor: pointer;
 }
 
 </style>

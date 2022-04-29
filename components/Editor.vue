@@ -112,6 +112,20 @@
 
           // Enclose any content within /* */ (including newlines) in <small> tags and add a .comment class
           content = content.replace(/\/\*[\s\S]*?\*\//g, `<small class="comment">$&</small>`)
+
+          // Make all content within {{}} hidden, witht he ability to switch back and forth
+          content = content.replace(/(<p>{{<\/p>)([\s\S]*?)(<p>}}<\/p>)/g,
+            '<div class="pre-hide" data-show="👀">$1</div><div class="hide muffled">$2</div><div>$3</div>')
+
+          // For every .pre-hide span, add an onclick event that toggles the .hide div
+          this.$nextTick(() => document.querySelectorAll('.pre-hide').forEach( div => {
+            div.onclick = () => {
+              let element = div.nextElementSibling
+              console.log(element)
+              element.classList.toggle('hide')
+              div.setAttribute('data-show', element.classList.contains('hide') ? '👀' : '🙈')
+            }
+          }))
           
           return content
 
@@ -134,6 +148,14 @@
 
       refresh() {
         this.content = this.value
+      },
+
+      content() {
+        // Scroll to bottom of editor
+        this.$nextTick(() => {
+          let editor = document.getElementById('editor')
+          editor.scrollTop = editor.scrollHeight
+        })
       }
       
     }
@@ -174,6 +196,37 @@
   /* Add a margin-top to a p after an li */
   * >>> li + p {
     margin-top: 1em;
+  }
+
+  * >>> .hide {
+    position: fixed;
+    z-index: -1;
+    height: 0;
+  }
+
+  * >>> .pre-hide:after {
+    cursor: pointer;
+    content: attr(data-show);
+    color: #5f9ea0;
+    font-family: sans-serif;
+    font-size: 0.8em;
+  }
+
+  * >>> mark {
+    /* Bright yellow */
+    background-color: #ffd700;
+  }
+
+  * >>> .muffled {
+    color: #ccc;
+    background-color: #fff;
+  }
+
+  * >>> .muffled * {
+    color: inherit;
+    background-color: inherit;
+    font-size: 75%;
+    border: 0;
   }
   
 
