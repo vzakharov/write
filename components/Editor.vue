@@ -55,7 +55,8 @@
               headingLevel = headingRegex.exec(paragraph)?.[1].length,
               bulletRegex = /^([\*-])\s+/,
               numberedRegex = /^(\d+)\.\s+/,
-              ctaRegex = /^(\[)(.+)(\])$/
+              ctaRegex = /^(\[)(.+)(\])$/,
+              hrRegex = /^(---)$/
 
             if ( !this.disableFormatting ) {
 
@@ -77,6 +78,8 @@
                 paragraph = paragraph.replace( ctaRegex, 
                   `<button class="btn btn-primary">${grayOut('$1')}$2${grayOut('$3')}</button>`
                 )
+              } else if ( hrRegex.test(paragraph) ) {
+                attributes = ' class="hr"'
               }
 
               // If the paragraph is empty, add a heigh 1em attribute to the paragraph tag
@@ -197,7 +200,7 @@
 
   #editor {
     font-size: 1.1em;
-    font-family: 'Sorts Mill Goudy', 'Georgia', serif;
+    font-family: 'Georgia', serif;
     /* Rounded shadow, no borders */
     border-radius: 5px;
 
@@ -276,6 +279,16 @@
     border-left: 4px solid #ddd;
     margin-left: 1em;
     padding-left: 1em;
+  }
+
+  * >>> .hr {
+    /* Gray and small */
+    color: #ccc;
+    font-size: 0.8em;
+    margin-top: 3em;
+    margin-bottom: 2em;
+    border: 0;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
   }
   
 
