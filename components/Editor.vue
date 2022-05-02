@@ -1,6 +1,6 @@
 <template>
   <div
-    id="editor"
+    id="editor-wrapper"
     class="cool-shadow"
     :style="{
       'background-color': disabled ? '#eee' : '#fff',
@@ -8,6 +8,7 @@
     }"
   >
     <div 
+      id="editor"
       :contenteditable="!disabled"
       style="outline: none"
       v-html="html"
@@ -15,11 +16,15 @@
         $emit( 'input', $event.target.innerText )
       "
       @blur="blur"
+      @keydown.ctrl.z.exact="undo"
+      @keydown.ctrl.shift.z="redo"
     />
   </div>
 </template>
 
 <script>
+
+  import _ from 'lodash'
 
   export default {
 
@@ -29,7 +34,10 @@
       
       return {
 
-        content: this.value
+        content: this.value,
+        history: [],
+        historyIndex: -1,
+        afterUndoOrRedo: false,
         
       }
     },
@@ -51,9 +59,9 @@
             let
               tag = 'p',
               attributes = '',
-              headingRegex = /^(#+) /,
+              headingRegex = /^(#+)(\s)/,
               headingLevel = headingRegex.exec(paragraph)?.[1].length,
-              bulletRegex = /^([\*-])\s+/,
+              bulletRegex = /^([\*-])(\s+)/,
               numberedRegex = /^(\d+)\.\s+/,
               ctaRegex = /^(\[)(.+)(\])$/
 
@@ -63,10 +71,10 @@
 
               if ( headingLevel ) {
                 tag = `h${headingLevel}`
-                paragraph = paragraph.replace( headingRegex, grayOut('$1 ') )
+                paragraph = paragraph.replace( headingRegex, grayOut('$1')+'$2' )
               } else if ( bulletRegex.test(paragraph) ) {
                 tag = 'li'
-                paragraph = paragraph.replace( bulletRegex, grayOut('$1 ') )
+                paragraph = paragraph.replace( bulletRegex, grayOut('$1')+'$2' )
               } else if ( numberedRegex.test(paragraph) ) {
                 tag = 'p'
                 attributes = ' class="pseudo-li"'
@@ -169,6 +177,88 @@
         if ( document.activeElement !== $event.target ) {
           this.content = this.value
         }
+      },
+
+      undo() {
+        console.log('undo')
+        this.walkHistory(1)
+      },
+
+      redo() {
+        console.log('redo')
+        this.walkHistory(-1)
+      },
+
+      walkHistory(direction) {
+
+        console.log(this.historyIndex)
+
+        let { history } = this
+
+        if ( history.length ) {
+
+          this.historyIndex += direction
+
+          if ( this.historyIndex < 0 ) {
+            this.historyIndex = 0
+          } else if ( this.historyIndex >= history.length ) {
+            this.historyIndex = history.length - 1
+          }
+
+          let {
+            caretPosition, content 
+          } = history[this.historyIndex]
+
+          this.caretPosition = caretPosition
+          this.afterUndoOrRedo = true
+          this.$emit('input', content)
+
+        }
+
+      },
+
+      setCaretPosition(caretPosition) {
+
+        let walker = document.createTreeWalker(
+          editor, NodeFilter.SHOW_ALL,
+          node => {
+            if ( caretPosition <= getText(node).length ) {
+              if ( node.nodeType === Node.TEXT_NODE ) {
+                // console.log('accepting', node)
+                return NodeFilter.FILTER_ACCEPT
+              } else {
+                // console.log('skipping', node)
+                return NodeFilter.FILTER_SKIP
+              }
+            } else {
+              caretPosition -= getText(node).length
+              if ( node.nodeType === Node.ELEMENT_NODE && window.getComputedStyle(node).display === 'block' ) {
+                caretPosition--
+              }
+              // console.log('rejecting', node, 'caretPosition', caretPosition)
+              return NodeFilter.FILTER_REJECT
+            }
+          }
+        )
+        
+        let node = walker.nextNode()
+        
+        // console.log(node)
+
+        // Set the caret position
+        let range = document.createRange()
+
+        if ( node ) {
+          range.setStart(node, caretPosition)
+          range.collapse(true)
+        } else {
+          range.selectNodeContents(editor)
+          range.collapse(false)
+        }
+
+        selection.removeAllRanges()
+        selection.addRange(range)
+
       }
 
     },
@@ -185,6 +275,90 @@
         //   let editor = document.getElementById('editor')
         //   editor.scrollTop = editor.scrollHeight
         // })
+      },
+
+      value(value) {
+
+        let { history, content, afterUndoOrRedo, caretPosition } = this
+
+        // Remember current caret position if needed; set content to value; restore caret position
+
+        this.$nextTick(() => {
+
+          let { caretPosition } = this
+
+          if ( afterUndoOrRedo ) {
+
+            this.afterUndoOrRedo = false
+            
+          } else {
+         
+            // First, get the current caret position
+            // To do this, we find all text nodes descending from the editor until we find the one that contains the caret
+            let editor = document.getElementById('editor')
+            let selection = window.getSelection()
+            let { anchorNode, anchorOffset } = selection
+
+            // If the anchorNode is not within the editor, return
+            if ( !editor.contains(anchorNode) ) {
+              return
+            }
+
+            let caretPosition = 0
+            let getText = node => node?.innerText || node?.textContent || ''
+
+            let walker = document.createTreeWalker(
+              // We start at the editor element
+              editor                
+              // We want text & element nodes
+            , NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT
+            , node => {
+                if ( node.contains(anchorNode) ) {
+                  // Is the text the same as the anchorNode?
+                  if ( getText(node) === getText(anchorNode) ) {
+                    // If so, we've reached the anchorNode
+                    // console.log('accepting', node)
+                    // If it's a newline, add 1 to the caret position
+                    if ( getText(node) === '\n' ) {
+                      caretPosition++
+                    }
+                    return NodeFilter.FILTER_ACCEPT
+                  } else {
+                    // If not, we need to keep looking deeper
+                    // console.log('skipping', node)
+                    return NodeFilter.FILTER_SKIP
+                  }
+                } else {
+                  caretPosition += getText(node).length
+                  // If it's a newline-containing element, add 1 to the caret position
+                  if ( node.nodeType === Node.ELEMENT_NODE && window.getComputedStyle(node).display === 'block' ) {
+                    caretPosition++
+                  }
+                  // console.log('rejecting', node, 'caretPosition', caretPosition)
+                  return NodeFilter.FILTER_REJECT
+                }
+              }
+            )
+
+            walker.nextNode()
+            caretPosition += anchorOffset
+
+            // console.log({ caretPosition })
+
+            // Delete all history entries with a lesser index than the current history index
+            history.splice(0, this.historyIndex - 1)
+            // Add the current content and caret position to the history
+
+          }
+
+          this.content = value
+
+          // Now, restore the caret position
+          this.$nextTick( () => this.setCaretPosition(caretPosition) )
+
+        })
+
+
       }
       
     }
@@ -195,7 +369,7 @@
 
 <style scoped>
 
-  #editor {
+  #editor-wrapper {
     font-size: 1.1em;
     font-family: 'Sorts Mill Goudy', 'Georgia', serif;
     /* Rounded shadow, no borders */
