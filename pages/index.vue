@@ -348,7 +348,7 @@
           <Editor 
             :value="(historyPreview || doc).content"
             @input="!historyPreview && ( doc.content = $event )"
-            :refresh="historyPreview && historyPreview.time || doc.id"
+            :key="historyPreview && historyPreview.time || doc.id"
             :disabled="historyPreview"
             v-bind="{ disableFormatting }"
           />
@@ -892,17 +892,24 @@
             let { delta } = history[i]            
             let deltaDefined = typeof delta !== 'undefined'
             let missingKey = deltaDefined ? 'content' : 'delta'
-            let missingValue = this.withDelta(
-              deltaDefined ? 'apply' : 'create',
-              before,
-              deltaDefined ? delta : after
-            )
+            try {
+              let missingValue = this.withDelta(
+                deltaDefined ? 'apply' : 'create',
+                before,
+                deltaDefined ? delta : after
+              )
 
-            this.$set( 
-              history[i],
-              missingKey,
-              missingValue
-            )
+              this.$set( 
+                history[i],
+                missingKey,
+                missingValue
+              )
+            } catch ( e ) {
+              console.error( e )
+              // Remove all history entries after and including the one that caused the error
+              history.splice( i )
+              break
+            }
 
           }
 
