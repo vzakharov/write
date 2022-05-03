@@ -13,6 +13,8 @@
     "bootstrap-vue": "^2.21.2",
     "chart.js": "^3.7.1",
     "core-js": "^3.19.3",
+    "dahnencode": "^1.0.3",
+    "diff": "^5.0.0",
     "fossil-delta": "^1.0.2",
     "lodash": "^4.17.21",
     "nuxt": "^2.15.8",

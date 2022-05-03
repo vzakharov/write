@@ -86,68 +86,75 @@
         }"
         cols="8" md="5" lg="4" xl="3"
       >
-        <!-- List of documents, their content cut with ellipsis -->
-        <b-row
-          v-for="(d, key) in docs"
-          :key="key"
-          class="m-0"
-        >
-          <b-col
-            cols="9"
-            class="p-2"
-            v-text="
-              computeTitle(d)
-              || 
-              createdDateAndTime(d)
-            "
-            :style="{
-              //'cursor: pointer; overflow: hidden; white-space: nowrap; text-overflow: ellipsis': true,
-              cursor: 'pointer', overflow: 'hidden', 'white-space': 'nowrap', 'text-overflow': 'ellipsis',
-              // gray italic if no content
-              ...( !d.content.trim() && {
-                'font-style': 'italic',
-                'color': '#868686'
-              } ),
-              // bold if current
-              ...( d === doc && {
-                'font-weight': 'bold'
-              } )
-            }"
-            @click="
-              doc = d
-              $router.push({
-                query: {
-                  id: d.id
-                }
-              })
-            "
-          />
-          <!-- Delete icon, not shown if there is just one document -->
-          <b-col>
-            <b-button-close
-              v-if="docs.length > 1"
-              size="sm"
-              @click="
-                if ( window.confirm('Are you sure? THERE IS NO UNDO!') ) {
-                  doc = docs[key - 1] || docs[key + 1] || null
-                  docs = without(docs, d)
-                }
-              "
-            />
-          </b-col>
-        </b-row>
+
         <!-- Add new document button -->
         <b-button
-          class="mt-2"
+          class="m-1"
           @click="
             doc = newDoc()
             docs = [...docs, doc]
           "
           size="sm"
-          variant="outline-secondary"
+          variant="light"
         >
-          +
+          🗎
         </b-button>
+
+        <!-- Button top open/close list of docs -->
+        <b-button
+          @click="() => showDocs = !showDocs"
+          size="sm"
+          :variant="showDocs ? 'outline-secondary' : 'light'"
+          class="m-1"
+        >
+          {{ showDocs ? '🗀' : '🗁' }}
+        </b-button>
+        <template 
+          v-if="showDocs"
+        >
+          <!-- List of documents, their content cut with ellipsis -->
+          <b-row
+            v-for="(d, key) in docs"
+            :key="key"
+            class="m-0"
+          >
+            <b-col
+              cols="9"
+              class="p-2"
+              :style="{
+                overflow: 'hidden', 'white-space': 'nowrap', 'text-overflow': 'ellipsis',
+                // gray italic if no content
+                ...( !d.content.trim() && {
+                  'font-style': 'italic',
+                  'color': '#868686'
+                } ),
+                // bold if current
+                ...( d === doc && {
+                  'font-weight': 'bold'
+                } )
+              }"
+            >
+              <nuxt-link
+                :to="{ query: { id: d.id } }"
+                class="text-secondary"
+                v-text="computeTitle(d) || createdDateAndTime(d)"
+              />                
+            </b-col>
+            <!-- Delete icon, not shown if there is just one document -->
+            <b-col>
+              <b-button-close
+                v-if="docs.length > 1"
+                size="sm"
+                @click="
+                  if ( window.confirm('Are you sure? THERE IS NO UNDO!') ) {
+                    doc = docs[key - 1] || docs[key + 1] || null
+                    docs = without(docs, d)
+                  }
+                "
+              />
+            </b-col>
+          </b-row>
+        </template>
 
         <!-- History of wordcount vs time -->
         <template
@@ -201,9 +208,8 @@
                 formatter: timeAsHHMMSS
               },
               {
-                key: 'content',
-                label: 'Words',
-                formatter: getWordcount
+                key: 'wordcount',
+                label: 'Words'
               },
               {
                 key: 'remove',
@@ -241,31 +247,7 @@
                   : '' 
                 )
             }"
-          >
-
-            <template #cell(time)="{ item }">
-              <!-- Button to preview content at that time; sets historyPreview to that item -->
-              <span
-                v-text="timeAsHHMMSS(item.time)"
-                :style="{
-                  cursor: 'pointer',
-                  'font-weight': item === historyPreview ? 'bold' : 'normal'
-                }"
-                @click="
-                  historyPreview = item
-                  historyPreviewFixed = true
-                "
-                @mouseover="
-                  historyPreview = item
-                "
-                @mouseleave="
-                  if ( !historyPreviewFixed )
-                    window.setTimeout(() => {
-                      historyPreview == item && ( historyPreview = null )
-                    }, 1000)
-                "
-              />
-            </template>
+          >            
 
             <template #cell(remove)="{ item }">
               <b-button-close
@@ -349,7 +331,7 @@
             :value="(historyPreview || doc).content"
             @input="!historyPreview && ( doc.content = $event )"
             :refresh="historyPreview && historyPreview.time || doc.id"
-            :disabled="historyPreview"
+            :readonly="historyPreview"
             v-bind="{ disableFormatting }"
           />
 
@@ -432,14 +414,15 @@
 
   import Chart from 'chart.js/auto'
   import fossilDelta from 'fossil-delta'
-
+  import { encode } from 'dahnencode'
 
 
   function newDoc() {
+    let created = Date.now()
     return {
       content: '',
-      created: Date.now(),
-      id: Math.round( Date.now() + Math.random() ) * 1000,
+      created,
+      id: encode(created),
       history: [{
         time: 0,
         content: ''
@@ -462,7 +445,11 @@
 
       return {
         // Extract first line from doc content (starting and ending with a \w). Otherwise take created
-        title: preTitle + 'Write.'
+        title: preTitle + 'Write.',
+        // Favicon
+        link: [
+          { rel: 'icon', type: 'image/x-icon', href: this.favicon || './favicon.png', hid: 'favicon' },
+        ]
       }
 
     },
@@ -493,6 +480,8 @@
         chartMode: 1,
         chartAxes: ['minutes', 'words'],
         saved: true,
+        showDocs: false,
+        favicon: null,
       }
 
     },
@@ -506,14 +495,14 @@
         .filter( key => key.startsWith( 'doc_' ) )
         .map( key => JSON.parse( localStorage.getItem( key ) ) )
         .value()
-      
+
       if ( !this.docs.length ) {
         this.docs = [ newDoc() ]
       }
       
       this.doc = 
         _.find( this.docs, {
-          id: Number( this.$route.query.id || localStorage.getItem( 'lastDocId' ) )
+          id: this.$route.query.id || localStorage.getItem( 'lastDocId' )
         } ) 
         || this.docs[0]
 
@@ -709,10 +698,7 @@
     methods: {
 
       setFavicon( href ) {
-        const link = document.querySelector('link[rel="icon"]')
-        link.href = href
-        // log the current favicon
-        console.log( link.href )
+        this.favicon = href
       },
 
       computeTitle(doc) {
@@ -870,12 +856,19 @@
 
     watch: {
 
+      '$route.query.id'( id ) {
+
+        this.doc = _.find( this.docs, { id } )
+
+      },
+
       'doc.id': {
 
         handler() {
 
           // Change tempContent on doc change
           this.tempContent = this.doc.content
+          this.showDocs = false
 
           // Focus editor
           this.$nextTick(() => {
@@ -892,17 +885,31 @@
             let { delta } = history[i]            
             let deltaDefined = typeof delta !== 'undefined'
             let missingKey = deltaDefined ? 'content' : 'delta'
-            let missingValue = this.withDelta(
-              deltaDefined ? 'apply' : 'create',
-              before,
-              deltaDefined ? delta : after
-            )
+            try {
+              let missingValue = this.withDelta(
+                deltaDefined ? 'apply' : 'create',
+                before,
+                deltaDefined ? delta : after
+              )
 
-            this.$set( 
-              history[i],
-              missingKey,
-              missingValue
-            )
+              this.$set( 
+                history[i],
+                missingKey,
+                missingValue
+              )
+
+              this.$set( 
+                history[i],
+                'wordcount',
+                this.getWordcount( history[i].content )
+              )
+              
+            } catch ( e ) {
+              console.error( e )
+              // Remove all history entries after and including the one that caused the error
+              history.splice( i )
+              break
+            }
 
           }
 
@@ -950,7 +957,7 @@
           _( localStorage )
           .keys()
           .filter( key => key.startsWith( 'doc_' ) )
-          .filter( key => !docs.find( doc => doc.id === parseInt( key.replace( 'doc_', '' ) ) ) )
+          .filter( key => !docs.find( doc => doc.id === key.replace( 'doc_', '' ) ) )
           .forEach( key => localStorage.removeItem( key ) )
 
         },
