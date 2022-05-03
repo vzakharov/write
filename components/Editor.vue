@@ -173,8 +173,8 @@
           content = content.replace(/\/\*[\s\S]*?\*\//g, `<small class="comment">$&</small>`)
 
           // Make all content within {{}} hidden, witht he ability to switch back and forth
-          content = content.replace(/(<p>{{<\/p>)([\s\S]*?)(<p>}}<\/p>)/g,
-            '<div class="pre-hide" data-show="👀">$1</div><div class="hide muffled">$2</div><div class="post-hide">$3</div>')
+          content = content.replace(/(<p>{{(\+?)<\/p>)([\s\S]*?)(<p>}}<\/p>)/g,
+            `<div class="pre-hide">$1</div><div data-show="$2" class="hide muffled">$3</div><div class="post-hide">$4</div>`)
 
           // For every .pre-hide span, add an onclick event that toggles the .hide div
           this.$nextTick(() => document.querySelectorAll('.pre-hide').forEach( div => {
@@ -273,9 +273,9 @@
 
     watch: {
 
-      // refresh() {
-      //   this.content = this.value
-      // },
+      refresh() {
+        this.content = this.value
+      },
 
       value(value) {
 
@@ -420,7 +420,7 @@
     margin-top: 1em;
   }
 
-  * >>> .hide {
+  * >>> .hide:not([data-show='+']) {
     position: fixed;
     z-index: -1;
     height: 0;
@@ -439,6 +439,7 @@
     /* Gray and small*/
     color: #ccc;
     font-size: 0.8em;
+    cursor: pointer;
   }
 
   * >>> mark {
