@@ -338,8 +338,8 @@
           <Editor 
             :value="(historyPreview || doc).content"
             @input="!historyPreview && ( doc.content = $event )"
-            :key="historyPreview && historyPreview.time || doc.id"
-            :disabled="historyPreview"
+            :refresh="historyPreview && historyPreview.time || doc.id"
+            :readonly="historyPreview"
             v-bind="{ disableFormatting }"
           />
 

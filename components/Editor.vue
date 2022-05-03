@@ -3,17 +3,17 @@
     id="editor-wrapper"
     class="cool-shadow"
     :style="{
-      'background-color': disabled ? '#eee' : '#fff',
+      'background-color': readonly ? '#eee' : '#fff',
       overflowY: 'scroll',
     }"
   >
     <div 
       id="editor"
-      :contenteditable="!disabled"
+      :contenteditable="!readonly"
       style="outline: none"
       v-html="html"
       @input="
-        $emit( 'input', $event.target.innerText )
+        !readonly && $emit( 'input', $event.target.innerText )
       "
       @blur="blur"
       @keydown.ctrl.z.exact="undo"
@@ -36,7 +36,7 @@
 
   export default {
 
-    props: ['value', 'disabled', 'disableFormatting', 'refresh'],
+    props: ['value', 'readonly', 'disableFormatting', 'refresh'],
 
     data() {
 
@@ -275,13 +275,15 @@
 
       refresh() {
         this.content = this.value
+        this.past = []
+        this.future = []
       },
 
       value(value) {
 
-        let { disabled, afterUndoOrRedo, content, caretPosition } = this
+        let { readonly, disableFormatting, afterUndoOrRedo, content, caretPosition } = this
 
-        if ( disabled )
+        if ( readonly || disableFormatting )
           return
 
         if ( afterUndoOrRedo ) {
@@ -292,16 +294,16 @@
 
           // Delete all future states (no redo is possible if we made a change)
           this.future = []
-          // Calculate the diff between the last stored state and the current value
-          let diff = this.past.length && diffChars(_.last(this.past).content, value)
-          if ( 
-            !diff || diff.filter(part => part.added || part.removed).length > 1 
-            || diff.find(part => part.added || part.removed)?.value.match(/\W$/)
-          ) {
-            console.log(diff)
+          // // Calculate the diff between the last stored state and the current value
+          // let diff = this.past.length && diffChars(_.last(this.past).content, value)
+          // if ( 
+          //   !diff || diff.filter(part => part.added || part.removed).length > 1 
+          //   || diff.find(part => part.added || part.removed)?.value.match(/\W$/)
+          // ) {
+          //   console.log(diff)
             this.past.push({ content, caretPosition })
-            console.log('past', this.past)
-          }         
+          //   console.log('past', this.past)
+          // }         
           
         
           // Get the current caret position
