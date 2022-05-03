@@ -121,14 +121,8 @@
             <b-col
               cols="9"
               class="p-2"
-              v-text="
-                computeTitle(d)
-                || 
-                createdDateAndTime(d)
-              "
               :style="{
-                //'cursor: pointer; overflow: hidden; white-space: nowrap; text-overflow: ellipsis': true,
-                cursor: 'pointer', overflow: 'hidden', 'white-space': 'nowrap', 'text-overflow': 'ellipsis',
+                overflow: 'hidden', 'white-space': 'nowrap', 'text-overflow': 'ellipsis',
                 // gray italic if no content
                 ...( !d.content.trim() && {
                   'font-style': 'italic',
@@ -139,15 +133,13 @@
                   'font-weight': 'bold'
                 } )
               }"
-              @click="
-                doc = d
-                $router.push({
-                  query: {
-                    id: d.id
-                  }
-                })
-              "
-            />
+            >
+              <nuxt-link
+                :to="{ query: { id: d.id } }"
+                class="text-secondary"
+                v-text="computeTitle(d) || createdDateAndTime(d)"
+              />                
+            </b-col>
             <!-- Delete icon, not shown if there is just one document -->
             <b-col>
               <b-button-close
@@ -422,14 +414,15 @@
 
   import Chart from 'chart.js/auto'
   import fossilDelta from 'fossil-delta'
-
+  import { encode } from 'dahnencode'
 
 
   function newDoc() {
+    let created = Date.now()
     return {
       content: '',
-      created: Date.now(),
-      id: Math.round( Date.now() + Math.random() ) * 1000,
+      created,
+      id: encode(created),
       history: [{
         time: 0,
         content: ''
@@ -452,7 +445,11 @@
 
       return {
         // Extract first line from doc content (starting and ending with a \w). Otherwise take created
-        title: preTitle + 'Write.'
+        title: preTitle + 'Write.',
+        // Favicon
+        link: [
+          { rel: 'icon', type: 'image/x-icon', href: this.favicon || './favicon.png', hid: 'favicon' },
+        ]
       }
 
     },
@@ -483,7 +480,8 @@
         chartMode: 1,
         chartAxes: ['minutes', 'words'],
         saved: true,
-        showDocs: false
+        showDocs: false,
+        favicon: null,
       }
 
     },
@@ -497,14 +495,14 @@
         .filter( key => key.startsWith( 'doc_' ) )
         .map( key => JSON.parse( localStorage.getItem( key ) ) )
         .value()
-      
+
       if ( !this.docs.length ) {
         this.docs = [ newDoc() ]
       }
       
       this.doc = 
         _.find( this.docs, {
-          id: Number( this.$route.query.id || localStorage.getItem( 'lastDocId' ) )
+          id: this.$route.query.id || localStorage.getItem( 'lastDocId' )
         } ) 
         || this.docs[0]
 
@@ -700,10 +698,7 @@
     methods: {
 
       setFavicon( href ) {
-        const link = document.querySelector('link[rel="icon"]')
-        link.href = href
-        // log the current favicon
-        console.log( link.href )
+        this.favicon = href
       },
 
       computeTitle(doc) {
@@ -861,6 +856,12 @@
 
     watch: {
 
+      '$route.query.id'( id ) {
+
+        this.doc = _.find( this.docs, { id } )
+
+      },
+
       'doc.id': {
 
         handler() {
@@ -956,7 +957,7 @@
           _( localStorage )
           .keys()
           .filter( key => key.startsWith( 'doc_' ) )
-          .filter( key => !docs.find( doc => doc.id === parseInt( key.replace( 'doc_', '' ) ) ) )
+          .filter( key => !docs.find( doc => doc.id === key.replace( 'doc_', '' ) ) )
           .forEach( key => localStorage.removeItem( key ) )
 
         },
