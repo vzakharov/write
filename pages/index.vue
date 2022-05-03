@@ -86,68 +86,83 @@
         }"
         cols="8" md="5" lg="4" xl="3"
       >
-        <!-- List of documents, their content cut with ellipsis -->
-        <b-row
-          v-for="(d, key) in docs"
-          :key="key"
-          class="m-0"
-        >
-          <b-col
-            cols="9"
-            class="p-2"
-            v-text="
-              computeTitle(d)
-              || 
-              createdDateAndTime(d)
-            "
-            :style="{
-              //'cursor: pointer; overflow: hidden; white-space: nowrap; text-overflow: ellipsis': true,
-              cursor: 'pointer', overflow: 'hidden', 'white-space': 'nowrap', 'text-overflow': 'ellipsis',
-              // gray italic if no content
-              ...( !d.content.trim() && {
-                'font-style': 'italic',
-                'color': '#868686'
-              } ),
-              // bold if current
-              ...( d === doc && {
-                'font-weight': 'bold'
-              } )
-            }"
-            @click="
-              doc = d
-              $router.push({
-                query: {
-                  id: d.id
-                }
-              })
-            "
-          />
-          <!-- Delete icon, not shown if there is just one document -->
-          <b-col>
-            <b-button-close
-              v-if="docs.length > 1"
-              size="sm"
-              @click="
-                if ( window.confirm('Are you sure? THERE IS NO UNDO!') ) {
-                  doc = docs[key - 1] || docs[key + 1] || null
-                  docs = without(docs, d)
-                }
-              "
-            />
-          </b-col>
-        </b-row>
+
         <!-- Add new document button -->
         <b-button
-          class="mt-2"
+          class="m-1"
           @click="
             doc = newDoc()
             docs = [...docs, doc]
           "
           size="sm"
-          variant="outline-secondary"
+          variant="light"
         >
-          +
+          🗎
         </b-button>
+
+        <!-- Button top open/close list of docs -->
+        <b-button
+          @click="() => showDocs = !showDocs"
+          size="sm"
+          :variant="showDocs ? 'outline-secondary' : 'light'"
+          class="m-1"
+        >
+          {{ showDocs ? '🗀' : '🗁' }}
+        </b-button>
+        <template 
+          v-if="showDocs"
+        >
+          <!-- List of documents, their content cut with ellipsis -->
+          <b-row
+            v-for="(d, key) in docs"
+            :key="key"
+            class="m-0"
+          >
+            <b-col
+              cols="9"
+              class="p-2"
+              v-text="
+                computeTitle(d)
+                || 
+                createdDateAndTime(d)
+              "
+              :style="{
+                //'cursor: pointer; overflow: hidden; white-space: nowrap; text-overflow: ellipsis': true,
+                cursor: 'pointer', overflow: 'hidden', 'white-space': 'nowrap', 'text-overflow': 'ellipsis',
+                // gray italic if no content
+                ...( !d.content.trim() && {
+                  'font-style': 'italic',
+                  'color': '#868686'
+                } ),
+                // bold if current
+                ...( d === doc && {
+                  'font-weight': 'bold'
+                } )
+              }"
+              @click="
+                doc = d
+                $router.push({
+                  query: {
+                    id: d.id
+                  }
+                })
+              "
+            />
+            <!-- Delete icon, not shown if there is just one document -->
+            <b-col>
+              <b-button-close
+                v-if="docs.length > 1"
+                size="sm"
+                @click="
+                  if ( window.confirm('Are you sure? THERE IS NO UNDO!') ) {
+                    doc = docs[key - 1] || docs[key + 1] || null
+                    docs = without(docs, d)
+                  }
+                "
+              />
+            </b-col>
+          </b-row>
+        </template>
 
         <!-- History of wordcount vs time -->
         <template
@@ -201,9 +216,8 @@
                 formatter: timeAsHHMMSS
               },
               {
-                key: 'content',
-                label: 'Words',
-                formatter: getWordcount
+                key: 'wordcount',
+                label: 'Words'
               },
               {
                 key: 'remove',
@@ -241,31 +255,7 @@
                   : '' 
                 )
             }"
-          >
-
-            <template #cell(time)="{ item }">
-              <!-- Button to preview content at that time; sets historyPreview to that item -->
-              <span
-                v-text="timeAsHHMMSS(item.time)"
-                :style="{
-                  cursor: 'pointer',
-                  'font-weight': item === historyPreview ? 'bold' : 'normal'
-                }"
-                @click="
-                  historyPreview = item
-                  historyPreviewFixed = true
-                "
-                @mouseover="
-                  historyPreview = item
-                "
-                @mouseleave="
-                  if ( !historyPreviewFixed )
-                    window.setTimeout(() => {
-                      historyPreview == item && ( historyPreview = null )
-                    }, 1000)
-                "
-              />
-            </template>
+          >            
 
             <template #cell(remove)="{ item }">
               <b-button-close
@@ -493,6 +483,7 @@
         chartMode: 1,
         chartAxes: ['minutes', 'words'],
         saved: true,
+        showDocs: false
       }
 
     },
@@ -876,6 +867,7 @@
 
           // Change tempContent on doc change
           this.tempContent = this.doc.content
+          this.showDocs = false
 
           // Focus editor
           this.$nextTick(() => {
@@ -904,6 +896,13 @@
                 missingKey,
                 missingValue
               )
+
+              this.$set( 
+                history[i],
+                'wordcount',
+                this.getWordcount( history[i].content )
+              )
+              
             } catch ( e ) {
               console.error( e )
               // Remove all history entries after and including the one that caused the error
