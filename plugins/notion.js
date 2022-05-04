@@ -147,8 +147,18 @@ function Notion(token) {
 
 function denotionize(data, key = 'properties') {
 
+  let jsonKeys = []
+
   data[key] = chain(data[key])
-    .mapKeys( ( value, key ) => camelCase(key) )
+    .mapKeys( ( value, key ) => {
+      key = camelCase(key)
+      if ( key.endsWith('Json') ) {
+        let type = 'object'
+        key = key.replace(/Json$/, '')
+        jsonKeys.push(key)
+      }
+      return key
+    })
     .mapValues( ( object, key ) => {
 
       const extract = object =>
@@ -161,6 +171,10 @@ function denotionize(data, key = 'properties') {
 
       if ( ['title', 'rich_text'].includes(object.type) ) {
         value = value[0]?.plain_text
+
+        if ( jsonKeys.includes(key) ) {
+          value = JSON.parse(value || null)
+        }
       }
 
       return value
