@@ -66,7 +66,9 @@
 
           }
           // Break content into paragraphs, wrapping each paragraph in a respective tag
-          content = content?.split(/\n+/).map( paragraph => {
+          content = content?.split(/\n{2}/).map( paragraph => {
+
+            paragraph = paragraph.trim()
             
             let
               tag = 'p',
@@ -88,15 +90,15 @@
                 paragraph = paragraph.replace( headingRegex, grayOut('$1')+'$2' )
               } else if ( numberedRegex.test(paragraph) ) {
                 tag = 'p'
-                attributes = ' class="li"'
+                attributes = ' class="li-numbered"'
                 paragraph = paragraph.replace( numberedRegex, 
                   '<span style="width: 1em; display: inline-block;"><strong>$1</strong>.&nbsp;</span>'
                 )
               } else if ( bulletRegex.test(paragraph) ) {
                 tag = 'p'
-                attributes = ' class="li"'
+                attributes = ' class="li-bullet"'
                 paragraph = paragraph.replace( bulletRegex,
-                  '<span style="width: 1em; display: inline-block;">$1&nbsp;</span>'
+                  `${grayOut('$1')}$2`
                 )
               } else if ( ctaRegex.test(paragraph) ) {
                 paragraph = paragraph.replace( ctaRegex, 
@@ -414,14 +416,19 @@
     font-size: 0.8em;
   }
 
-  * >>> .li {
+  * >>> .li-numbered {
     margin-left: 3em;
     text-indent: -1em;
   }
 
-  /* Add a margin-top to a p after an li */
-  * >>> li + p {
-    margin-top: 1em;
+  * >>> .li-bullet {
+    margin-left: 3em;
+    text-indent: -1.5em;
+  }
+
+  * >>> .li-bullet:before {
+    content: '•';
+    margin-right: 0.5em;
   }
 
   * >>> .hide:not([data-show='+']) {
