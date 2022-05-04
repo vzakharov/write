@@ -73,10 +73,11 @@
               attributes = '',
               headingRegex = /^(#+)(\s)/,
               headingLevel = headingRegex.exec(paragraph)?.[1].length,
-              bulletRegex = /^([\*-])(\s+)/,
               numberedRegex = /^(\d+)\.\s+/,
+              bulletRegex = /^([\*-])(\s+)/,
               ctaRegex = /^(\[)(.+)(\])$/,
-              hrRegex = /^(---)$/
+              hrRegex = /^(---)$/,
+              commentRegex = /^(\/\/)(.+)$/
 
             if ( !this.disableFormatting ) {
 
@@ -85,14 +86,17 @@
               if ( headingLevel ) {
                 tag = `h${headingLevel}`
                 paragraph = paragraph.replace( headingRegex, grayOut('$1')+'$2' )
-              } else if ( bulletRegex.test(paragraph) ) {
-                tag = 'li'
-                paragraph = paragraph.replace( bulletRegex, grayOut('$1')+'$2' )
               } else if ( numberedRegex.test(paragraph) ) {
                 tag = 'p'
-                attributes = ' class="pseudo-li"'
+                attributes = ' class="li"'
                 paragraph = paragraph.replace( numberedRegex, 
                   '<span style="width: 1em; display: inline-block;"><strong>$1</strong>.&nbsp;</span>'
+                )
+              } else if ( bulletRegex.test(paragraph) ) {
+                tag = 'p'
+                attributes = ' class="li"'
+                paragraph = paragraph.replace( bulletRegex,
+                  '<span style="width: 1em; display: inline-block;">$1&nbsp;</span>'
                 )
               } else if ( ctaRegex.test(paragraph) ) {
                 paragraph = paragraph.replace( ctaRegex, 
@@ -100,6 +104,8 @@
                 )
               } else if ( hrRegex.test(paragraph) ) {
                 attributes = ' class="hr"'
+              } else if ( commentRegex.test(paragraph) ) {
+                attributes = ' class="comment"'
               }
 
               // If the paragraph is empty, add a heigh 1em attribute to the paragraph tag
@@ -169,7 +175,7 @@
 
           }).join('\n')
 
-          // Enclose any content within /* */ (including newlines) in <small> tags and add a .comment class
+          // Multiline comments: Enclose any content within /* */ (including newlines) in a .comment class
           content = content.replace(/\/\*[\s\S]*?\*\//g, `<div class="comment">$&</div>`)
 
           // Make all content within {{}} hidden, witht he ability to switch back and forth
@@ -408,13 +414,7 @@
     font-size: 0.8em;
   }
 
-  /* Indent li */
-  * >>> li {
-    margin-left: 1em;
-  }
-
-  * >>> .pseudo-li {
-    /* Gray-green color */
+  * >>> .li {
     margin-left: 3em;
     text-indent: -1em;
   }

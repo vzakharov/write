@@ -205,7 +205,7 @@ function notionize({ properties, content }) {
     children: content.plain && (
       content = (
         typeof content.plain === 'string' ? content.plain : JSON.stringify(content.plain, null, 2)
-      ).split('\n'),
+      ).split(/\n+/),
       content.map( line => ({
         type: 'paragraph',
         paragraph: {

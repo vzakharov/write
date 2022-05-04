@@ -430,7 +430,7 @@
             <b-button
               @click="save"
               size="sm"
-              :variant="saved ? 'light' : saving ? 'outline-info' : 'outline-danger'"
+              :variant="saved || saving ? 'light' : 'outline-danger'"
               :disabled="saved || saving"
             >
               {{ saved ? 'All changes saved.' : saving ? 'Saving...' : 'Save' }}
