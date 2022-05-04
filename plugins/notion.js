@@ -38,7 +38,7 @@ function Notion(token) {
                   key === 'name' ? 'title' : 'rich_text'
                 ]: [{
                   text: {
-                    content: value
+                    content: typeof value === 'string' ? value : JSON.stringify(value)
                   }
                 }]
               }
