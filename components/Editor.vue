@@ -115,11 +115,11 @@
                   )
                 }
 
-                let italicRegex = /_([^_]+)_/g
+                let italicRegex = /([^*])(\*)(\w[^*]+?)\2/g
 
                 if ( italicRegex.test(paragraph) ) {
                   paragraph = paragraph.replace( italicRegex, 
-                    `${grayOut('_')}<em>$1</em>${grayOut('_')}`
+                    `$1${grayOut('$2')}<em>$3</em>${grayOut('$2')}`
                   )
                 }
 
@@ -170,7 +170,7 @@
           }).join('\n')
 
           // Enclose any content within /* */ (including newlines) in <small> tags and add a .comment class
-          content = content.replace(/\/\*[\s\S]*?\*\//g, `<small class="comment">$&</small>`)
+          content = content.replace(/\/\*[\s\S]*?\*\//g, `<div class="comment">$&</div>`)
 
           // Make all content within {{}} hidden, witht he ability to switch back and forth
           content = content.replace(/(<p>{{(\+?)<\/p>)([\s\S]*?)(<p>}}<\/p>)/g,
@@ -404,6 +404,8 @@
   * >>> .comment {
     /* Gray-green color */
     color: #5f9ea0;
+    /* Smaller font size */
+    font-size: 0.8em;
   }
 
   /* Indent li */
