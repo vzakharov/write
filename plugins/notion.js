@@ -28,39 +28,34 @@ function Notion(token) {
         data
       } = await api.post('pages', {
         parent,
-        properties: chain(properties)
-          .mapValues(( value, key ) => {
-
-            // If string, wrap in { X: [{ text: { content: value }}]}, where X is 'title' if key is 'name', and 'rich_text' otherwise
-            if ( typeof value === 'string' ) {
-              return {
-                [ 
-                  key === 'name' ? 'title' : 'rich_text'
-                ]: [{
-                  text: {
-                    content: typeof value === 'string' ? value : JSON.stringify(value)
-                  }
-                }]
-              }
-            }
-
-            // If number, wrap in { number: value }
-            if ( typeof value === 'number' ) {
-              return {
-                number: value
-              }
-            }
-
-          })
-          .mapKeys(( value, key ) =>
-            // Upper first + space between every lower and upper letter
-            upperFirst(key)
-            .replace(/([a-z])([A-Z])/g, '$1 $2')
-          )
-          .value()
+        ...notionize({ properties, content })
       })
 
       denotionize(data)
+
+      return data
+
+    },
+
+    // Update page
+    async updatePage(id, { properties, content }) {
+
+      let {
+        data
+      } = await api.patch(`pages/${id}`,
+        notionize({ properties, content })
+      )
+
+      denotionize(data)
+
+      return data
+
+    },
+
+    // Delete block
+    async deleteBlock(id) {
+
+      let { data } = await api.delete(`blocks/${id}`)
 
       return data
 
@@ -107,6 +102,22 @@ function Notion(token) {
       })
     },
 
+    // Get page by name
+    async getPageBy(databaseId, filter ) {
+      let key = keys(filter)[0]
+      let value = filter[key]
+      return ( 
+        await this.queryDatabase(databaseId, {
+          filter: {
+            property: _.startCase(key),
+            title: {
+              equals: value
+            }
+          }
+        })
+      )?.[0]
+    },
+
     // get a block
     async getBlock(blockId, { recurse = false } = {}) {
 
@@ -143,6 +154,72 @@ function Notion(token) {
 
   })
 
+}
+
+function notionize({ properties, content }) {
+
+  let jsonKeys = []
+
+  return {
+
+    properties: chain(properties)
+      .mapValues((value, key) => {
+        
+        if (typeof value === 'number') {
+          return {
+            number: value
+          }
+        }
+
+        else {
+          let isObject = value && typeof value === 'object'
+
+          if ( isObject ) {
+            jsonKeys.push(key)
+          }
+
+          return {
+            [key === 'name' ? 'title' : 'rich_text']: [{
+              text: {
+                content: isObject ? JSON.stringify(value) : value
+              }
+            }]
+          }
+        }
+
+      })
+      .mapKeys((value, key) => {
+
+        if ( jsonKeys.includes(key) ) {
+          key += ' JSON'
+        }
+
+        // Upper first + space between every lower and upper letter
+        key = _.startCase(key)
+
+        return key
+
+      })
+      .value(),
+
+    children: content.plain && (
+      content = (
+        typeof content.plain === 'string' ? content.plain : JSON.stringify(content.plain, null, 2)
+      ).split('\n'),
+      content.map( line => ({
+        type: 'paragraph',
+        paragraph: {
+          rich_text: [{
+            type: 'text',
+            text: {
+              content: line
+            }
+          }]
+        }
+      }) )
+    )
+
+  }
 }
 
 function denotionize(data, key = 'properties') {

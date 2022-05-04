@@ -6,6 +6,14 @@ export default {
     base: '/write/'
   },
 
+  env: {
+    NOTION_API_URL: process.env.NOTION_API_URL || 
+      // uncomment below for production
+      'https://ideality.app/api/notion/',
+      // uncomment below for development
+      // 'http://localhost:14775/api/notion/',
+  },
+
   // Global page headers: https://go.nuxtjs.dev/config-head
   head: {
     title: 'Write.',

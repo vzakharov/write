@@ -59,8 +59,73 @@
         class="m-1"
         switch
       >
-        Start on input
+        Start timer on input
       </b-check>
+
+      <!-- Sync with Notion switch -->
+      <b-check
+        v-model="settings.write.syncWithNotion"
+        size="sm"
+        variant="outline-secondary"
+        class="m-1"
+        switch
+      >
+        <span
+          @contextmenu.prevent="$refs.notionSyncSettings.show()"
+        >
+          Sync with Notion
+        </span>
+      </b-check>
+
+      <!-- Notion sync settings modal -->
+      <b-modal
+        ref="notionSyncSettings"
+        id="notion-sync-settings"
+        size="sm"
+        :title="'Notion sync settings'"
+        hide-footer
+        centered
+        @hidden="
+          // if no settings are set, undo the checkbox
+          if ( !settings.notionKey || !settings.write.notionDatabaseId ) {
+            settings.write.syncWithNotion = false
+          }
+        "
+      >
+        <!-- API key -->
+        <b-form-group
+          label="Notion API key"
+          label-for="notionApiKey"
+        >
+          <b-input
+            lazy
+            id="notionApiKey"
+            v-model="settings.notionKey"
+            size="sm"
+            type="text"
+            placeholder="Enter your Notion API key"
+          />
+        </b-form-group>
+        <!-- Database id -->
+        <b-form-group
+          label="Notion database ID"
+          label-for="notionDatabaseId"
+        >
+          <b-input
+            id="notionDatabaseId"
+            v-model="settings.write.notionDatabaseId"
+            size="sm"
+            type="text"
+            placeholder="Enter your Notion database ID"
+          />
+        </b-form-group>
+        <p
+          v-if="settings.notionKey && settings.write.notionDatabaseId"
+          class="text-success small"
+        >
+          To open this modal again in the future, right-click the “Sync with Notion” switch.
+        </p>
+      </b-modal>
 
     </div>
 
@@ -365,12 +430,12 @@
             <b-button
               @click="save"
               size="sm"
-              :variant="saved ? 'light' : 'outline-danger'"
-              :disabled="saved"
+              :variant="saved ? 'light' : saving ? 'outline-info' : 'outline-danger'"
+              :disabled="saved || saving"
             >
-              {{ saved ? 'All changes saved.' : 'Save' }}
+              {{ saved ? 'All changes saved.' : saving ? 'Saving...' : 'Save' }}
             </b-button>
-
+          
             <!-- Button to exit preview -->
             <b-button
               v-if="historyPreview && historyPreviewFixed"
@@ -415,6 +480,7 @@
   import Chart from 'chart.js/auto'
   import fossilDelta from 'fossil-delta'
   import { encode } from 'dahnencode'
+  import Notion from '~/plugins/notion'
 
 
   function newDoc() {
@@ -480,13 +546,47 @@
         chartMode: 1,
         chartAxes: ['minutes', 'words'],
         saved: true,
+        saving: false,
         showDocs: false,
         favicon: null,
+        settings: {
+          notionKey: undefined,
+          write: {
+            syncWithNotion: false,
+          }
+        },
+        notion: null
       }
 
     },
 
     mounted() {
+
+      // Load all settings from localStorage and watch them afterwards
+      for ( let key in this.settings ) {
+
+        let localValue = localStorage.getItem( key )
+        let defaultValue = this.settings[key]
+
+        console.log({ key, localValue, defaultValue })
+        
+        // If the existing value is an object, we need to parse the localStorage value
+        let isObject = typeof defaultValue === 'object'
+        let isArray = Array.isArray( defaultValue )
+        if ( isObject ) {
+          localValue = JSON.parse( localValue || null )
+        }
+
+        this.settings[key] = 
+          isObject && !isArray ?
+            { ...defaultValue, ...localValue }
+            : localValue || defaultValue
+
+        this.$watch( 'settings.' + key, { deep: true, handler: value => {
+          localStorage.setItem(key, isObject ? JSON.stringify(value) : value)
+        }})
+      }
+
 
       // Load all doc_[id] keys from localStorage and add them to docs
       this.docs =
@@ -821,32 +921,93 @@
 
       },
 
-      save() {
+      async save() {
 
-        let { doc } = this
-            
-        // Save current content to history, creating it if it doesn't exist
-        let history = doc.history || this.$set( doc, 'history', [] )
+        if ( this.saving )
+          return
 
-        // Push current content to history
-        let { time, content } = doc
-        history.push({
-          time,
-          content,
-          delta: history.length && this.withDelta( 'create', history[history.length - 1].content, content )
-        })
+        try {
+          
+          this.saved = false
+          this.saving = true
+          let { doc } = this
+              
+          // Save current content to history, creating it if it doesn't exist
+          let history = doc.history || this.$set( doc, 'history', [] )
 
-        localStorage.setItem(`doc_${doc.id}`, JSON.stringify({
-          ...doc,
-          history: _.map(doc.history, ( item, i ) =>
-            // Remove 'content' for space saving
-            i ? _.omit( item, 'content' ) : item
-          )
-        }))
+          // Push current content to history
+          let { time, content } = doc
+          history.push({
+            time,
+            content,
+            delta: history.length && this.withDelta( 'create', history[history.length - 1].content, content )
+          })
 
-        // Show a "Saved!" toast
-        console.log('Saved!')
-        this.$nextTick( () => this.saved = true )
+          let docToSave = {
+            ...doc,
+            history: _.map(doc.history, ( item, i ) =>
+              // Remove 'content' for space saving
+              i ? _.omit( item, 'content' ) : item
+            )
+          }
+
+          localStorage.setItem(`doc_${doc.id}`, JSON.stringify(docToSave))
+
+          if ( this.settings.write.syncWithNotion ) {
+
+            let database_id = this.settings.write.notionDatabaseId
+            // Find page with name = doc.id. If none, create one
+            let page = await this.notion.getPageBy(
+              database_id,
+              { localId: doc.id}
+            )
+
+            let dataToSave = {
+              properties: {
+                name: this.computeTitle(doc),
+                localId: doc.id,
+                time: doc.time,
+              },
+              content: {
+                plain: doc.content
+              }
+            }
+
+            console.log({ page, dataToSave })
+
+            await this.notion.createPage({
+              parent: { database_id },
+              ...dataToSave
+            })
+
+            if ( page ) {
+              // Delete old page; don't wait for it to be deleted
+              this.notion.deleteBlock( page.details.id )
+            }
+
+          }
+
+
+          // Show a "Saved!" toast
+          console.log('Saved!')
+          this.$nextTick( () => this.saved = true )
+        
+        } catch (e) {
+
+          console.error(e)
+          this.$bvToast.toast( 'Error saving: ' + JSON.stringify(e, null, 2), {
+            title: 'Error',
+            autoHideDelay: 2000,
+            appendToast: true,
+            variant: 'danger'
+          })
+
+        } finally {
+
+          this.saving = false
+
+        }
+
 
       },
 
@@ -855,6 +1016,51 @@
     },
 
     watch: {
+
+      async 'settings.notionKey'( key, oldKey ) {
+
+        if ( key ) {
+
+          console.log('Loading Notion data...')
+
+          this.notion = new Notion(key)
+
+
+          try {
+
+            console.log('Athenticating...')
+
+            await this.notion.getUser()
+            console.log('Authenticated!')
+
+          } catch (e) {
+
+            console.log('Authentication failed!')
+            this.notion = null
+            this.settings.notionKey = oldKey
+            this.$bvToast.toast( 'Invalid Notion key', {
+              title: 'Error',
+              autoHideDelay: 2000,
+              appendToast: true,
+              variant: 'danger'
+            })
+            this.$bvModal.show('notion-sync-settings')
+
+          }
+
+        }
+
+      },
+
+
+
+      'settings.write.syncWithNotion'( sync ) {
+        // Open the modal if sync is enabled and no notion settings are set
+        if ( sync ) {
+          if ( !this.settings.notionKey || !this.settings.write.notionDatabaseId )
+            this.$bvModal.show('notion-sync-settings')
+        }
+      },
 
       '$route.query.id'( id ) {
 
