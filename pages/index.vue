@@ -6,6 +6,8 @@
     v-if="doc"
     style="overflow: hidden"
     @keydown.ctrl.s.prevent="save"
+    @keydown.ctrl.shift.187.prevent="zoom(+10)"
+    @keydown.ctrl.shift.189.prevent="zoom(-10)"
   >
     <!-- Toolbar -->
     <div 
@@ -397,7 +399,7 @@
             @input="!historyPreview && ( doc.content = $event )"
             :refresh="historyPreview && historyPreview.time || doc.id"
             :readonly="historyPreview"
-            v-bind="{ disableFormatting }"
+            v-bind="{ disableFormatting, ...settings.write.editor }"
           />
 
           <div 
@@ -578,6 +580,9 @@
           notionKey: undefined,
           write: {
             syncWithNotion: false,
+            editor: {
+              zoom: 100
+            }
           }
         },
         notion: null
@@ -823,6 +828,15 @@
     },
 
     methods: {
+
+      zoom(delta) {
+        this.settings.write.editor.zoom += delta
+        this.$bvToast.toast('Zoom changed', {
+          title: `${this.settings.write.editor.zoom}%`,
+          variant: 'success',
+          autoHideDelay: 500
+        })
+      },
 
       setFavicon( href ) {
         this.favicon = href

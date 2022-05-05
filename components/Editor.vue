@@ -10,7 +10,10 @@
     <div 
       id="editor"
       :contenteditable="!readonly"
-      style="outline: none"
+      :style="{
+        outline: 'none',
+        zoom: zoom + '%',
+      }"
       v-html="html"
       @input="
         !readonly && $emit( 'input', $event.target.innerText )
@@ -36,7 +39,23 @@
 
   export default {
 
-    props: ['value', 'readonly', 'disableFormatting', 'refresh'],
+    props: {
+      value: {
+        default: '',
+      },
+      readonly: {
+        default: false,
+      },
+      disableFormatting: {
+        default: false,
+      },
+      refresh: {
+        default: false,
+      },
+      zoom: {
+        default: 100,
+      },
+    },
 
     data() {
 
@@ -49,7 +68,7 @@
         caretPosition,
         past: [{ content, caretPosition }],
         future: [], 
-        afterUndoOrRedo: false,
+        afterUndoOrRedo: false
         
       }
     },
