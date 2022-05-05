@@ -66,7 +66,7 @@
 
           }
           // Break content into paragraphs, wrapping each paragraph in a respective tag
-          content = content?.split(/\n{2}/).map( paragraph => {
+          content = content?.split(/\n\n|\n/).map( paragraph => {
 
             paragraph = paragraph.trim()
             

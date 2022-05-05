@@ -435,6 +435,30 @@
             >
               {{ saved ? 'All changes saved.' : saving ? 'Saving...' : 'Save' }}
             </b-button>
+
+            <!-- Notes modal -->
+            <b-modal
+              id="notes-modal"
+              size="lg"
+              :title="'Notes'"
+              centered
+              :hide-footer="true"
+            >
+              <b-textarea
+                v-model="doc.notes"
+                rows="10"
+              />
+            </b-modal>
+
+            <!-- Show notes button -->
+            <b-button
+              v-b-modal.notes-modal
+              size="sm"
+              variant="outline-secondary"
+            >
+              Notes
+            </b-button>
+
           
             <!-- Button to exit preview -->
             <b-button
@@ -487,6 +511,7 @@
     let created = Date.now()
     return {
       content: '',
+      notes: '',
       created,
       id: encode(created),
       history: [{
@@ -600,11 +625,13 @@
         this.docs = [ newDoc() ]
       }
       
-      this.doc = 
-        _.find( this.docs, {
+      this.doc = {
+        ...newDoc(),
+        ..._.find( this.docs, {
           id: this.$route.query.id || localStorage.getItem( 'lastDocId' )
         } ) 
         || this.docs[0]
+      }
 
       const onResize = () => {
         this.width = window.innerWidth
@@ -967,6 +994,7 @@
                 name: this.computeTitle(doc),
                 localId: doc.id,
                 time: doc.time,
+                notes: doc.notes,
               },
               content: {
                 plain: doc.content
