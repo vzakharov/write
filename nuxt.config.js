@@ -11,7 +11,9 @@ export default {
       // uncomment below for production
       'https://ideality.app/api/notion/',
       // uncomment below for development
-      // 'http://localhost:14775/api/notion/',
+      // 'http://localhost:9133/api/notion/',
+      // uncomment below to use public cors proxy
+      // 'https://cors-anywhere.herokuapp.com/https://ideality.app/api/notion/'
   },
 
   // Global page headers: https://go.nuxtjs.dev/config-head
