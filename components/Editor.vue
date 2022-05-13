@@ -142,7 +142,7 @@
                   )
                 }
 
-                let italicRegex = /([^*])(\*)(\w[^*]+?)\2/g
+                let italicRegex = /([^*]|^)(\*)(\w[^*]+?)\2/g
 
                 if ( italicRegex.test(paragraph) ) {
                   paragraph = paragraph.replace( italicRegex, 
