@@ -16,9 +16,9 @@
 
       <!-- Toggle sidebar -->
       <b-button
-        @click="() => showSidebar = !showSidebar"
+        @click="() => settings.write.showSidebar = !settings.write.showSidebar"
         size="sm"
-        :variant="showSidebar ? 'outline-secondary' : 'light'"
+        :variant="settings.write.showSidebar ? 'outline-secondary' : 'light'"
         class="m-1"
       >
         ≡
@@ -53,81 +53,120 @@
         style="max-width: 100px"
       />
 
-      <!-- Switch to autostart the doc timer on content change -->
-      <b-check
-        v-model="autoStartDocTimer"
+      <!-- Button to show/hide settings in the toolbar -->
+      <b-button
+        @click="() => settings.write.showSettings = !settings.write.showSettings"
         size="sm"
-        variant="outline-secondary"
+        :variant="settings.write.showSettings ? 'outline-secondary' : 'light'"
         class="m-1"
-        switch
       >
-        Start timer on input
-      </b-check>
+        ⚙
+      </b-button>
 
-      <!-- Sync with Notion switch -->
-      <b-check
-        v-model="settings.write.syncWithNotion"
-        size="sm"
-        variant="outline-secondary"
-        class="m-1"
-        switch
+      <template
+        v-if="settings.write.showSettings"
       >
-        <span
-          @contextmenu.prevent="$refs.notionSyncSettings.show()"
-        >
-          Sync with Notion
-        </span>
-      </b-check>
 
-      <!-- Notion sync settings modal -->
-      <b-modal
-        ref="notionSyncSettings"
-        id="notion-sync-settings"
-        size="sm"
-        :title="'Notion sync settings'"
-        hide-footer
-        centered
-        @hidden="
-          // if no settings are set, undo the checkbox
-          if ( !settings.notionKey || !settings.write.notionDatabaseId ) {
-            settings.write.syncWithNotion = false
-          }
-        "
-      >
-        <!-- API key -->
-        <b-form-group
-          label="Notion API key"
-          label-for="notionApiKey"
+        <!-- Switch to autostart the doc timer on content change -->
+        <b-check
+          v-model="autoStartDocTimer"
+          size="sm"
+          variant="outline-secondary"
+          class="m-1"
+          switch
         >
-          <b-input
-            lazy
-            id="notionApiKey"
-            v-model="settings.notionKey"
-            size="sm"
-            type="text"
-            placeholder="Enter your Notion API key"
-          />
-        </b-form-group>
-        <!-- Database id -->
-        <b-form-group
-          label="Notion database ID"
-          label-for="notionDatabaseId"
+          Start timer on input
+        </b-check>
+
+        <!-- Sync with Notion switch -->
+        <b-check
+          v-model="settings.write.syncWithNotion"
+          size="sm"
+          variant="outline-secondary"
+          class="m-1"
+          switch
         >
-          <b-input
-            id="notionDatabaseId"
-            v-model="settings.write.notionDatabaseId"
-            size="sm"
-            type="text"
-            placeholder="Enter your Notion database ID"
-          />
-        </b-form-group>
-        <p
-          v-if="settings.notionKey && settings.write.notionDatabaseId"
-          class="text-success small"
+          <span
+            @contextmenu.prevent="$refs.notionSyncSettings.show()"
+          >
+            Sync with Notion
+          </span>
+        </b-check>
+
+        <!-- Notion sync settings modal -->
+        <b-modal
+          ref="notionSyncSettings"
+          id="notion-sync-settings"
+          size="sm"
+          :title="'Notion sync settings'"
+          hide-footer
+          centered
+          @hidden="
+            // if no settings are set, undo the checkbox
+            if ( !settings.notionKey || !settings.write.notionDatabaseId ) {
+              settings.write.syncWithNotion = false
+            }
+          "
         >
-          To open this modal again in the future, right-click the “Sync with Notion” switch.
-        </p>
-      </b-modal>
+          <!-- API key -->
+          <b-form-group
+            label="Notion API key"
+            label-for="notionApiKey"
+          >
+            <b-input
+              lazy
+              id="notionApiKey"
+              v-model="settings.notionKey"
+              size="sm"
+              type="text"
+              placeholder="Enter your Notion API key"
+            />
+          </b-form-group>
+          <!-- Database id -->
+          <b-form-group
+            label="Notion database ID"
+            label-for="notionDatabaseId"
+          >
+            <b-input
+              id="notionDatabaseId"
+              v-model="settings.write.notionDatabaseId"
+              size="sm"
+              type="text"
+              placeholder="Enter your Notion database ID"
+            />
+          </b-form-group>
+          <p
+            v-if="settings.notionKey && settings.write.notionDatabaseId"
+            class="text-success small"
+          >
+            To open this modal again in the future, right-click the “Sync with Notion” switch.
+          </p>
+        </b-modal>
+
+        <!-- Download on manual save switch -->
+        <b-check
+          v-model="settings.write.downloadOnManualSave"
+          size="sm"
+          variant="outline-secondary"
+          class="m-1"
+          switch
+        >
+          Download on manual save
+        </b-check>
+
+        <!-- Enable bionic reading switch -->
+        <b-check
+          v-model="settings.write.editor.bionicReading"
+          size="sm"
+          variant="outline-secondary"
+          class="m-1"
+          switch
+        >
+          Enable bionic reading
+        </b-check>
+
+
+      </template>
 
     </div>
 
@@ -140,7 +179,7 @@
     >
       <!-- Sidebar, toggleable. On small screens, it has absolute positioning -->
       <b-col
-        v-show="showSidebar"
+        v-show="settings.write.showSidebar"
         :class="{
           'position-absolute': width < 768,
           'cool-shadow bg-white full-height p-2': true
@@ -151,7 +190,7 @@
           fontSize: '0.7em',
           zIndex: 1,
         }"
-        cols="8" md="5" lg="4" xl="3"
+        cols="8" md="4" xl="3"
       >
 
         <!-- Add new document button -->
@@ -176,18 +215,49 @@
         >
           {{ showDocs ? '🗀' : '🗁' }}
         </b-button>
-        <template 
+
+        <template
           v-if="showDocs"
         >
+          <!-- Button to toggle 'show starred only' -->
+          <b-button
+            @click="settings.write.showStarredOnly = !settings.write.showStarredOnly"
+            size="sm"
+            :variant="settings.write.showStarredOnly ? 'outline-secondary' : 'light'"
+            class="m-1"
+          >
+            {{ settings.write.showStarredOnly ? '⭐' : '✩' }}
+          </b-button>
+
+          <!-- Button to toggle 'show archived' -->
+          <b-button
+            @click="settings.write.showArchived = !settings.write.showArchived"
+            size="sm"
+            :variant="settings.write.showArchived ? 'outline-secondary' : 'light'"
+            class="m-1"
+          >
+            🗄
+          </b-button>
+
+          <!-- Button to show/hide individual document actions -->
+          <b-button
+            @click="settings.write.showDocActions = !settings.write.showDocActions"
+            size="sm"
+            :variant="settings.write.showDocActions ? 'outline-secondary' : 'light'"
+            class="m-1"
+          >
+            …
+          </b-button>
+
           <!-- List of documents, their content cut with ellipsis -->
           <b-row
-            v-for="(d, key) in docs"
+            v-for="(d, key) in filteredDocs"
             :key="key"
             class="m-0"
           >
             <b-col
-              cols="9"
-              class="p-2"
+              class="p-2 mr-auto"
+              align-self="center"
               :style="{
                 overflow: 'hidden', 'white-space': 'nowrap', 'text-overflow': 'ellipsis',
                 // gray italic if no content
@@ -204,21 +274,53 @@
               <nuxt-link
                 :to="{ query: { id: d.id } }"
                 class="text-secondary"
-                v-text="computeTitle(d) || createdDateAndTime(d)"
+                v-text="computeTitle(d) || formattedDateTime(d.created)"
               />                
             </b-col>
-            <!-- Delete icon, not shown if there is just one document -->
-            <b-col>
-              <b-button-close
+
+            <!-- Document actions -->
+            <b-col
+              v-if="settings.write.showDocActions"
+              cols="auto"
+              class="p-2 ml-auto"
+              id="doc-actions"
+            >
+              <!-- Star/unstar -->            
+              <b-button
+                size="sm"
+                variant="light"
+                @click="
+                  is(d.id, 'starred').value = !is(d.id, 'starred').value
+                "
+              >
+                {{ is(d.id, 'starred').value ? '⭐' : '✩' }}
+              </b-button>
+
+              <!-- Archive/unarchive -->
+              <b-button
+                size="sm"
+                :variant="is(d.id, 'archived').value ? 'outline-secondary' : 'light'"
+                @click="
+                  is(d.id, 'archived').value = !is(d.id, 'archived').value
+                "
+              >
+                🗄
+              </b-button>
+
+              <!-- Delete, not shown if there is just one document -->
+              <b-button
                 v-if="docs.length > 1"
                 size="sm"
+                variant="light"
                 @click="
                   if ( window.confirm('Are you sure? THERE IS NO UNDO!') ) {
                     doc = docs[key - 1] || docs[key + 1] || null
                     docs = without(docs, d)
                   }
                 "
-              />
+              >
+                ×
+              </b-button>
             </b-col>
           </b-row>
         </template>
@@ -399,6 +501,7 @@
             @input="!historyPreview && ( doc.content = $event )"
             :refresh="historyPreview && historyPreview.time || doc.id"
             :readonly="historyPreview"
+            :key="settings.write.editor.bionicReading ? 'bionic' : 'non-bionic'"
             v-bind="{ disableFormatting, ...settings.write.editor }"
           />
 
@@ -533,7 +636,7 @@
 
       if ( doc )
         preTitle = (
-          this.computeTitle(this.doc) || this.createdDateAndTime( this.doc?.created )
+          this.computeTitle(this.doc) || this.formattedDateTime( this.doc?.created )
         ) + ' · '
 
       return {
@@ -551,7 +654,6 @@
 
       return {
         mounted: false,
-        showSidebar: null,
         width: null,
         tempContent: null,
         workspaceTop: 0,
@@ -580,6 +682,14 @@
           notionKey: undefined,
           write: {
             syncWithNotion: false,
+            showSidebar: true,
+            showSettings: true,
+            showStarredOnly: false,
+            showArchived: false,
+            showDocActions: true,
+            archived: [],
+            starred: [],
+            downloadOnManualSave: true,
             editor: {
               zoom: 100
             }
@@ -649,10 +759,14 @@
 
       // If the user intends to leave, check if there are unsaved changes and ask if they want to save
       window.onbeforeunload = event => {
+
         event.preventDefault()
+        this.downloadDocAsJSON(this.doc)
+
         if ( !this.saved ) {
           return 'You have unsaved changes. Are you sure you want to leave?'
         }
+
       }
       console.log('beforeunload listener added')
 
@@ -686,6 +800,22 @@
     },
 
     computed: {
+
+      filteredDocs() {
+
+        let { docs, settings: { write: { starred, archived, showStarredOnly, showArchived } } } = this
+
+        if ( showStarredOnly ) {
+          docs = docs.filter( doc => starred.includes( doc.id ) )
+        }
+
+        if ( !showArchived ) {
+          docs = docs.filter( doc => !archived.includes( doc.id ) )
+        }
+
+        return docs
+
+      },
 
       content: {
         get() {
@@ -829,6 +959,39 @@
 
     methods: {
 
+      is(id, key) {
+        let array = this.settings.write[key]
+        return Object.defineProperty({}, 'value', {
+          get() {
+            return array.includes( id )
+          },
+          set(value) {
+            if ( value ) {
+              array.push( id )
+            } else {
+              array.splice( array.indexOf( id ), 1 )
+            }
+            // Object.assign( this.settings.write, { starred } )
+          }
+        })
+      },
+
+      downloadDocAsJSON(doc) {
+
+        let data = JSON.stringify( doc )
+        let blob = new Blob([data], {type: 'application/json'})
+        let url = URL.createObjectURL(blob)
+        let a = document.createElement('a')
+        a.href = url
+        // Filename is the title of the doc plus the date formatted as 2022-05-20
+        a.download = `${this.computeTitle(doc)} (${new Date().toISOString().slice(0,10)}).json`
+        a.click()
+        // Remove the object URL and the anchor
+        URL.revokeObjectURL(url)
+        a.remove()
+
+      },
+
       zoom(delta) {
         this.settings.write.editor.zoom += delta
         this.$bvToast.toast('Zoom changed', {
@@ -846,9 +1009,9 @@
         return doc?.content?.match(/\w[\w\s-]*\w|\w/)?.[0]
       },
 
-      createdDateAndTime(d) {
-        // Created date and time written as e.g. 'Thu, Apr 10, 10:00 am'
-        return new Date(d.created).toLocaleString('en-US', {
+      formattedDateTime(date) {
+        // e.g. 'Thu, Apr 10, 10:00 am'
+        return new Date(date).toLocaleString('en-US', {
           weekday: 'short',
           month: 'short',
           day: 'numeric',
@@ -940,15 +1103,27 @@
         if ( !(content?.trim()) )
           return 0
 
-        // Strip HTML tags
-        // let stripped = content.replace( /<[^>]+>/g, ' ' )
-        // console.log('stripped', stripped)
+        // If the content has a line that says "{{start count}}", remove everything before and including that line
+        content = content.replace( /^[\s\S]*?\{\{start count\}\}/gm, '' )
+
+
+        // If ther is a line that says "//words=[number]", just return the number
+        let match = content.match( /^\/\/words\=[0-9]+/gm )
+        if ( match ) {
+          return parseInt( match[0].split('=')[1] )
+        }
+
+        // If there are lines that start as "//words+=[number]", add the number to the wordcount
+        let wordcount = 0
+        content.match( /^\/\/words\+=[0-9]+/gm )?.forEach( line => {
+          wordcount += parseInt( line.match( /[0-9]+/ )[0] )
+        } )
 
         content = this.removeComments(content)
 
         let words = content.split( /[^\w-]+/ ).filter( word => word.trim() )
         // console.log('words', words)
-        return words.length
+        return wordcount + words.length
 
       },
 
@@ -962,7 +1137,7 @@
 
       },
 
-      async save() {
+      async save({ dontDownload } = {}) {
 
         if ( this.saving )
           return
@@ -993,6 +1168,10 @@
           }
 
           localStorage.setItem(`doc_${doc.id}`, JSON.stringify(docToSave))
+
+          if ( !dontDownload && this.settings.write.downloadOnManualSave ) {
+            this.downloadDocAsJSON( docToSave )
+          }
 
           if ( this.settings.write.syncWithNotion ) {
 
@@ -1114,6 +1293,12 @@
 
         handler() {
 
+          // If there was an oldDoc, download it as JSON
+          if ( this.oldDoc ) {
+            this.downloadDocAsJSON( this.oldDoc )
+          }
+          this.oldDoc = this.doc
+
           // Change tempContent on doc change
           this.tempContent = this.doc.content
           this.showDocs = false
@@ -1187,7 +1372,7 @@
           // Reset the idle timer
           clearTimeout( this.idleTimer )
 
-          this.idleTimer = setTimeout(this.save, 5000)
+          this.idleTimer = setTimeout(() => this.save({ dontDownload: true }), 5000)
 
           // Start doc timer
           if ( this.autoStartDocTimer )
@@ -1253,6 +1438,10 @@
 
 .cursor-pointer {
   cursor: pointer;
+}
+
+#doc-actions button {
+  font-size: 0.6rem;
 }
 
 </style>
