@@ -29,6 +29,7 @@
 
   import _ from 'lodash'
   import { diffChars, diffWords } from 'diff'
+  import { enableBionic } from '~/plugins/bionic'
 
 
   const { 
@@ -55,6 +56,9 @@
       zoom: {
         default: 100,
       },
+      bionicReading: {
+        default: false,
+      },
     },
 
     data() {
@@ -77,143 +81,147 @@
 
       html() {
 
-          let { content } = this
+        let { content } = this
 
-          if (!content) {
+        if (!content) {
 
-            return ''
+          return ''
+
+        }
+        // Break content into paragraphs, wrapping each paragraph in a respective tag
+        content = content?.split(/\n\n|\n/).map( paragraph => {
+
+          paragraph = paragraph.trim()
+          
+          let
+            tag = 'p',
+            attributes = '',
+            headingRegex = /^(#+)(\s)/,
+            headingLevel = headingRegex.exec(paragraph)?.[1].length,
+            numberedRegex = /^(\d+)\.\s+/,
+            bulletRegex = /^([\*-])(\s+)/,
+            ctaRegex = /^(\[)(.+)(\])$/,
+            hrRegex = /^(---)$/,
+            commentRegex = /^(\/\/)(.+)|(\{\{)(.+)(\}\})$/
+
+          if ( !this.disableFormatting ) {
+
+            const grayOut = text => `<span style="color: #ccc">${text}</span>`
+
+            if ( headingLevel ) {
+              tag = `h${headingLevel}`
+              paragraph = paragraph.replace( headingRegex, grayOut('$1')+'$2' )
+            } else if ( numberedRegex.test(paragraph) ) {
+              tag = 'p'
+              attributes = ' class="li-numbered"'
+              paragraph = paragraph.replace( numberedRegex, 
+                '<span style="width: 1em; display: inline-block;"><strong>$1</strong>.&nbsp;</span>'
+              )
+            } else if ( bulletRegex.test(paragraph) ) {
+              tag = 'p'
+              attributes = ' class="li-bullet"'
+              paragraph = paragraph.replace( bulletRegex,
+                `${grayOut('$1')}$2`
+              )
+            } else if ( ctaRegex.test(paragraph) ) {
+              paragraph = paragraph.replace( ctaRegex, 
+                `<button class="btn btn-primary">${grayOut('$1')}$2${grayOut('$3')}</button>`
+              )
+            } else if ( hrRegex.test(paragraph) ) {
+              attributes = ' class="hr"'
+            } else if ( commentRegex.test(paragraph) ) {
+              attributes = ' class="comment"'
+            }
+
+            // If the paragraph is empty, add a heigh 1em attribute to the paragraph tag
+            if ( !paragraph.trim() ) {
+              attributes = ' style="min-height: 1em"'
+            } else {
+
+              let boldRegex = /\*\*([^*]+?)\*\*/g
+
+              if ( boldRegex.test(paragraph) ) {
+                paragraph = paragraph.replace( boldRegex, 
+                  `${grayOut('**')}<strong>$1</strong>${grayOut('**')}`
+                )
+              }
+
+              let italicRegex = /([^*]|^)(\*)(\w[^*]+?)\2/g
+
+              if ( italicRegex.test(paragraph) ) {
+                paragraph = paragraph.replace( italicRegex, 
+                  `$1${grayOut('$2')}<em>$3</em>${grayOut('$2')}`
+                )
+              }
+
+
+              let linkRegex = /(\[)(.+?)(\]\(.+?\))/g
+
+              if ( linkRegex.test(paragraph) ) {
+                paragraph = paragraph.replace( linkRegex, 
+                  `${grayOut('$1')}<a href="$4">$2</a>${grayOut('$3')}`
+                )
+              }
+
+              let highlightRegex = /^(=+) (.+?) \1$/
+
+              if ( highlightRegex.test(paragraph) ) {
+                let numOfEqualSigns = paragraph.match(highlightRegex)?.[1].length
+                let highlightColorsByLevel = [
+                  // light green
+                  '#b3ffd9',
+                  // light yellow
+                  '#ffffb3',
+                  // light blue
+                  '#b3d9ff',
+                  // pleasantly pink
+                  '#ffb3ff',
+                ]
+                paragraph = paragraph.replace( highlightRegex, 
+                  `${grayOut('$1')}<mark style="background-color: ${highlightColorsByLevel[numOfEqualSigns - 1]}"> $2 </mark>${grayOut('$1')}`
+                )
+              }
+
+              let blockquoteRegex = /^(>\s+)/
+
+              if ( blockquoteRegex.test(paragraph) ) {
+                tag = 'blockquote'
+                paragraph = paragraph.replace( blockquoteRegex, 
+                  `${grayOut('$1')}`
+                )
+              }
+
+
+            }
 
           }
-          // Break content into paragraphs, wrapping each paragraph in a respective tag
-          content = content?.split(/\n\n|\n/).map( paragraph => {
 
-            paragraph = paragraph.trim()
-            
-            let
-              tag = 'p',
-              attributes = '',
-              headingRegex = /^(#+)(\s)/,
-              headingLevel = headingRegex.exec(paragraph)?.[1].length,
-              numberedRegex = /^(\d+)\.\s+/,
-              bulletRegex = /^([\*-])(\s+)/,
-              ctaRegex = /^(\[)(.+)(\])$/,
-              hrRegex = /^(---)$/,
-              commentRegex = /^(\/\/)(.+)$/
+          return `<${tag}${attributes}>${paragraph}</${tag}>`
 
-            if ( !this.disableFormatting ) {
+        }).join('\n')
 
-              const grayOut = text => `<span style="color: #ccc">${text}</span>`
+        // Multiline comments: Enclose any content within /* */ (including newlines) in a .comment class
+        content = content.replace(/\/\*[\s\S]*?\*\//g, `<div class="comment">$&</div>`)
 
-              if ( headingLevel ) {
-                tag = `h${headingLevel}`
-                paragraph = paragraph.replace( headingRegex, grayOut('$1')+'$2' )
-              } else if ( numberedRegex.test(paragraph) ) {
-                tag = 'p'
-                attributes = ' class="li-numbered"'
-                paragraph = paragraph.replace( numberedRegex, 
-                  '<span style="width: 1em; display: inline-block;"><strong>$1</strong>.&nbsp;</span>'
-                )
-              } else if ( bulletRegex.test(paragraph) ) {
-                tag = 'p'
-                attributes = ' class="li-bullet"'
-                paragraph = paragraph.replace( bulletRegex,
-                  `${grayOut('$1')}$2`
-                )
-              } else if ( ctaRegex.test(paragraph) ) {
-                paragraph = paragraph.replace( ctaRegex, 
-                  `<button class="btn btn-primary">${grayOut('$1')}$2${grayOut('$3')}</button>`
-                )
-              } else if ( hrRegex.test(paragraph) ) {
-                attributes = ' class="hr"'
-              } else if ( commentRegex.test(paragraph) ) {
-                attributes = ' class="comment"'
-              }
+        // Make all content within {{}} hidden, witht he ability to switch back and forth
+        content = content.replace(/(<p>{{(\+?)<\/p>)([\s\S]*?)(<p>}}<\/p>)/g,
+          `<div class="pre-hide">$1</div><div data-show="$2" class="hide muffled">$3</div><div class="post-hide">$4</div>`)
 
-              // If the paragraph is empty, add a heigh 1em attribute to the paragraph tag
-              if ( !paragraph.trim() ) {
-                attributes = ' style="min-height: 1em"'
-              } else {
+        // For every .pre-hide span, add an onclick event that toggles the .hide div
+        this.$nextTick(() => document.querySelectorAll('.pre-hide').forEach( div => {
+          div.onclick = () => {
+            let element = div.nextElementSibling
+            console.log(element)
+            element.classList.toggle('hide')
+            div.setAttribute('data-show', element.classList.contains('hide') ? '👀' : '🙈')
+          }
+        }))
 
-                let boldRegex = /\*\*([^*]+?)\*\*/g
-
-                if ( boldRegex.test(paragraph) ) {
-                  paragraph = paragraph.replace( boldRegex, 
-                    `${grayOut('**')}<strong>$1</strong>${grayOut('**')}`
-                  )
-                }
-
-                let italicRegex = /([^*]|^)(\*)(\w[^*]+?)\2/g
-
-                if ( italicRegex.test(paragraph) ) {
-                  paragraph = paragraph.replace( italicRegex, 
-                    `$1${grayOut('$2')}<em>$3</em>${grayOut('$2')}`
-                  )
-                }
-
-
-                let linkRegex = /(\[)(.+?)(\]\(.+?\))/g
-
-                if ( linkRegex.test(paragraph) ) {
-                  paragraph = paragraph.replace( linkRegex, 
-                    `${grayOut('$1')}<a href="$4">$2</a>${grayOut('$3')}`
-                  )
-                }
-
-                let highlightRegex = /^(=+) (.+?) \1$/
-
-                if ( highlightRegex.test(paragraph) ) {
-                  let numOfEqualSigns = paragraph.match(highlightRegex)?.[1].length
-                  let highlightColorsByLevel = [
-                    // light green
-                    '#b3ffd9',
-                    // light yellow
-                    '#ffffb3',
-                    // light blue
-                    '#b3d9ff',
-                    // pleasantly pink
-                    '#ffb3ff',
-                  ]
-                  paragraph = paragraph.replace( highlightRegex, 
-                    `${grayOut('$1')}<mark style="background-color: ${highlightColorsByLevel[numOfEqualSigns - 1]}"> $2 </mark>${grayOut('$1')}`
-                  )
-                }
-
-                let blockquoteRegex = /^(>\s+)/
-
-                if ( blockquoteRegex.test(paragraph) ) {
-                  tag = 'blockquote'
-                  paragraph = paragraph.replace( blockquoteRegex, 
-                    `${grayOut('$1')}`
-                  )
-                }
-
-
-              }
-
-            }
-            
-            return `<${tag}${attributes}>${paragraph}</${tag}>`
-
-          }).join('\n')
-
-          // Multiline comments: Enclose any content within /* */ (including newlines) in a .comment class
-          content = content.replace(/\/\*[\s\S]*?\*\//g, `<div class="comment">$&</div>`)
-
-          // Make all content within {{}} hidden, witht he ability to switch back and forth
-          content = content.replace(/(<p>{{(\+?)<\/p>)([\s\S]*?)(<p>}}<\/p>)/g,
-            `<div class="pre-hide">$1</div><div data-show="$2" class="hide muffled">$3</div><div class="post-hide">$4</div>`)
-
-          // For every .pre-hide span, add an onclick event that toggles the .hide div
-          this.$nextTick(() => document.querySelectorAll('.pre-hide').forEach( div => {
-            div.onclick = () => {
-              let element = div.nextElementSibling
-              console.log(element)
-              element.classList.toggle('hide')
-              div.setAttribute('data-show', element.classList.contains('hide') ? '👀' : '🙈')
-            }
-          }))
-          
-          return content
+        if ( this.bionicReading ) {
+          this.$nextTick(this.makeBionic)
+        }
+        
+        return content
 
       }
 
@@ -246,9 +254,6 @@
         assign(this, this[fromKey].pop())
         this.afterUndoOrRedo = true
       },
-
-
-
 
       setCaretPosition(caretPosition) {
 
@@ -294,6 +299,16 @@
         selection.removeAllRanges()
         selection.addRange(range)
 
+      },
+
+      makeBionic() {
+        enableBionic({
+          root: document.getElementById('editor'),
+          settings: {
+            boldnessCutoff: 0.5,
+            boldnessIncrement: 300,
+          }
+        })
       }
 
     },
@@ -319,18 +334,8 @@
           
         } else {
 
-          // Delete all future states (no redo is possible if we made a change)
           this.future = []
-          // // Calculate the diff between the last stored state and the current value
-          // let diff = this.past.length && diffChars(_.last(this.past).content, value)
-          // if ( 
-          //   !diff || diff.filter(part => part.added || part.removed).length > 1 
-          //   || diff.find(part => part.added || part.removed)?.value.match(/\W$/)
-          // ) {
-          //   console.log(diff)
-            this.past.push({ content, caretPosition })
-          //   console.log('past', this.past)
-          // }         
+          this.past.push({ content, caretPosition })
           
         
           // Get the current caret position
@@ -390,18 +395,15 @@
 
           this.content = value
 
+          // if bionic reading is enabled, run makeBionic on nextTick
+          if ( this.bionicReading ) {
+            this.$nextTick(this.makeBionic)
+          }
+        
           // Now, restore the caret position
           this.$nextTick( () => this.setCaretPosition(caretPosition) )
 
       },
-
-      // past(value) {
-      //   console.log('past', JSON.stringify(value))
-      // },
-
-      // future(value) {
-      //   console.log('future', JSON.stringify(value))
-      // }
       
     }
 
@@ -504,6 +506,10 @@
     margin-bottom: 2em;
     border: 0;
     border-top: 1px solid rgba(0, 0, 0, 0.1);
+  }
+
+  * >>> .bionic-bold {
+    font-weight: bold;
   }
   
 
