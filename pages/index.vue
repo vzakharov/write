@@ -199,6 +199,7 @@
           @click="
             doc = newDoc()
             docs = [...docs, doc]
+            $router.push({ query: { id: doc.id } })
           "
           size="sm"
           variant="light"
@@ -251,7 +252,7 @@
 
           <!-- List of documents, their content cut with ellipsis -->
           <b-row
-            v-for="(d, key) in filteredDocs"
+            v-for="(d, key) in displayedDocs"
             :key="key"
             class="m-0"
           >
@@ -801,7 +802,7 @@
 
     computed: {
 
-      filteredDocs() {
+      displayedDocs() {
 
         let { docs, settings: { write: { starred, archived, showStarredOnly, showArchived } } } = this
 
@@ -812,6 +813,9 @@
         if ( !showArchived ) {
           docs = docs.filter( doc => !archived.includes( doc.id ) )
         }
+
+        // Sort by name
+        docs = _.sortBy(docs, this.computeTitle)        
 
         return docs
 
