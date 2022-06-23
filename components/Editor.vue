@@ -83,6 +83,8 @@
 
         let { content } = this
 
+        content = _.escape( content )
+
         if (!content) {
 
           return ''
