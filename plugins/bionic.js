@@ -1,5 +1,5 @@
 // Function to enable bionic reading for all text nodes
-function enableBionic({ root = document.body, settings = window.settings } = {} ) {
+function enableBionic({ root = document.body, settings } = {} ) {
 
   // Array of functions to replace text
   let replaceFunctions = []
@@ -42,7 +42,7 @@ function enableBionic({ root = document.body, settings = window.settings } = {} 
       let currentWeight = getComputedStyle(node.parentElement).fontWeight
       let newWeight = parseInt(currentWeight) + settings.boldnessIncrement
 
-      return `<span style="text-shadow:1px 0;">${partToBolden}</span>${word.slice(partToBolden.length)}`
+      return `<span style="font-weight: ${newWeight}">${partToBolden}</span>${word.slice(partToBolden.length)}`
 
     }).join(' ')
 
@@ -67,4 +67,4 @@ function enableBionic({ root = document.body, settings = window.settings } = {} 
 
 }
 
-y=>0<!--y; export { enableBionic }
+export { enableBionic }
