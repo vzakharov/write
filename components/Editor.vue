@@ -223,6 +223,8 @@
           this.$nextTick(this.makeBionic)
         }
         
+        content = this.insertSnippets(content)
+
         return content
 
       }
@@ -230,6 +232,34 @@
     },
 
     methods: {
+
+      insertSnippets(html) {
+
+        // console.log(html)
+
+        // First, find all bits formatted as ((text))[id]
+        let snippetRegex = /\(\(([\s\S]+?)\)\)\[(\w+)\]/g
+        // console.log(snippetRegex)
+
+        // Save them as an object with the id as the key and the text as the value
+        let snippets = {}, match
+        while ( match = snippetRegex.exec(html) ) {
+          console.log({match})
+          // Convert snippet HTML to text
+          let text = match[1].replace(/<[^>]+>/g, '')
+          snippets[match[2]] = text
+        }
+        console.log(snippets)
+
+        // Then, for all bits formatted as ((id)), insert a span with a :before content of the snippet's text
+        let snippetInsertionRegex = /\(\((\w+)\)\)/g
+        while ( match = snippetInsertionRegex.exec(html) ) {
+          html = html.replace(match[0], `((<span class="snippet" data-snippet="${snippets[match[1]]}">${match[1]}</span>))`)
+        }
+
+        return html
+
+      },
 
       blur($event) {
         // Only fire if the active element is not the editor
@@ -414,6 +444,13 @@
 </script>
 
 <style scoped>
+
+  * >>> .snippet::after {
+    color: #999;
+    font-style: italic;
+    content: attr(data-snippet);
+  }
+
 
   #editor-wrapper {
     font-size: 1.1em;
