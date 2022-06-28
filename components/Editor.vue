@@ -90,6 +90,9 @@
           return ''
 
         }
+
+        let snippets = this.getSnippets( content )
+
         // Break content into paragraphs, wrapping each paragraph in a respective tag
         content = content?.split(/\n\n|\n/).map( paragraph => {
 
@@ -102,7 +105,7 @@
             headingLevel = headingRegex.exec(paragraph)?.[1].length,
             numberedRegex = /^(\d+)\.\s+/,
             bulletRegex = /^([\*-])(\s+)/,
-            ctaRegex = /^(\[)(.+)(\])$/,
+            ctaRegex = /^(\[)([^[].+)(\])$/,
             hrRegex = /^(---)$/,
             commentRegex = /^(\/\/)(.+)|(\{\{)(.+)(\}\})$/
 
@@ -223,7 +226,7 @@
           this.$nextTick(this.makeBionic)
         }
         
-        content = this.insertSnippets(content)
+        content = this.insertSnippets(content, snippets)
 
         return content
 
@@ -233,28 +236,61 @@
 
     methods: {
 
-      insertSnippets(html) {
+      getSnippets(content) {
 
-        // console.log(html)
-
-        // First, find all bits formatted as ((text))[id]
-        let snippetRegex = /\(\(([\s\S]+?)\)\)\[(\w+)\]/g
+        // First, find all bits formatted as ((text)), and text does not end with ...
+        let snippetRegex = /\(\(([\s\S]+?)(?!\.\.\.)\)\)/g
         // console.log(snippetRegex)
 
-        // Save them as an object with the id as the key and the text as the value
-        let snippets = {}, match
-        while ( match = snippetRegex.exec(html) ) {
-          console.log({match})
-          // Convert snippet HTML to text
-          let text = match[1].replace(/<[^>]+>/g, '')
-          snippets[match[2]] = text
+        let snippets = [], match
+        while ( match = snippetRegex.exec(content) ) {
+          snippets.push(match[1])
         }
-        console.log(snippets)
+        // console.log({snippets})
 
-        // Then, for all bits formatted as ((id)), insert a span with a :before content of the snippet's text
-        let snippetInsertionRegex = /\(\((\w+)\)\)/g
+        return snippets
+
+      },
+
+      insertSnippets(html, snippets) {
+
+        // Find bits starting with an uppercase and ending with ...
+        let snippetInsertionRegex = /(([A-Z][\w\s]+?)\.\.\.)/g
+        // console.log(snippetInsertionRegex)
+        let match
+        let id = 0
         while ( match = snippetInsertionRegex.exec(html) ) {
-          html = html.replace(match[0], `((<span class="snippet" data-snippet="${snippets[match[1]]}">${match[1]}</span>))`)
+
+          // console.log({match})
+
+          // Find a snippet starting with the same text
+          let text = match[2]
+          let snippet = snippets.find( snippet => snippet.startsWith(text) )
+          if ( !snippet ) {
+            console.warn('No snippet found for: ' + text)
+            continue
+          }
+          // console.log('Found snippet: ' + snippet)
+
+          id++
+
+          // Put an anchor on the original snippet text
+          html = html.replace(`((${text}`, `((${text}<span id="snippet-${id}"></span>`)
+
+          html = html.replace(match[0], `${text}<span 
+            class="snippet"
+            data-snippet="${snippet.replace(text, '')}"
+            onclick="
+              let element = document.querySelector('#snippet-${id}')
+              let range = document.createRange()
+              range.setStart(element, 0)
+              let selection = window.getSelection()
+              selection.removeAllRanges()
+              selection.addRange(range)
+              element.scrollIntoView()
+            "
+          >...</span>`)
+
         }
 
         return html
@@ -449,6 +485,11 @@
     color: #999;
     font-style: italic;
     content: attr(data-snippet);
+    white-space: pre-wrap;
+  }
+
+  * >>> .snippet {
+    cursor: pointer;
   }
 
 
