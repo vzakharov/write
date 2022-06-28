@@ -280,15 +280,7 @@
           html = html.replace(match[0], `${text}<span 
             class="snippet"
             data-snippet="${snippet.replace(text, '')}"
-            onclick="
-              let element = document.querySelector('#snippet-${id}')
-              let range = document.createRange()
-              range.setStart(element, 0)
-              let selection = window.getSelection()
-              selection.removeAllRanges()
-              selection.addRange(range)
-              element.scrollIntoView()
-            "
+            onclick="gotoid('snippet-${id}')"
           >...</span>`)
 
         }
@@ -473,6 +465,21 @@
 
       },
       
+    },
+
+    mounted() {
+      window.gotoid = id => {
+        let element = document.getElementById(id)
+        if ( element ) {
+          element.scrollIntoView()
+          let range = document.createRange()
+          range.setStart(element, 0)
+          let selection = window.getSelection()
+          selection.removeAllRanges()
+          selection.addRange(range)
+          element.scrollIntoView()
+        }
+      }
     }
 
   }
