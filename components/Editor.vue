@@ -30,6 +30,7 @@
   import _ from 'lodash'
   import { diffChars, diffWords } from 'diff'
   import { enableBionic } from '~/plugins/bionic'
+  import { getSnippets, insertSnippets } from '~/plugins/snippets'
 
 
   const { 
@@ -91,7 +92,7 @@
 
         }
 
-        let snippets = this.getSnippets( content )
+        let snippets = getSnippets( content )
 
         // Break content into paragraphs, wrapping each paragraph in a respective tag
         content = content?.split(/\n\n|\n/).map( paragraph => {
@@ -226,7 +227,7 @@
           this.$nextTick(this.makeBionic)
         }
         
-        content = this.insertSnippets(content, snippets)
+        content = insertSnippets(content, snippets, { insertAsHtml: true })
 
         return content
 
@@ -235,61 +236,6 @@
     },
 
     methods: {
-
-      getSnippets(content) {
-
-        // First, find all bits formatted as ((text)), and text does not end with ...
-        let snippetRegex = /\(\(([\s\S]+?)(?!\.\.\.)\)\)/g
-        // console.log(snippetRegex)
-
-        let snippets = [], match
-        while ( match = snippetRegex.exec(content) ) {
-          snippets.push(match[1])
-        }
-        // console.log({snippets})
-
-        return snippets
-
-      },
-
-      insertSnippets(html, snippets) {
-
-        // Find bits starting with an uppercase and ending with ...
-        let snippetInsertionRegex = /(([A-Z][\w\s]+?)\.\.\.)/g
-        // console.log(snippetInsertionRegex)
-        let match
-        let ids = {}
-        let last_id = 1
-        while ( match = snippetInsertionRegex.exec(html) ) {
-
-          // console.log({match})
-
-          // Find a snippet starting with the same text
-          let text = match[2]
-          let snippet = snippets.find( snippet => snippet.startsWith(text) )
-          if ( !snippet ) {
-            console.warn('No snippet found for: ' + text)
-            continue
-          }
-          let id = ids[text]
-
-          if ( !ids[text] ) {
-            id = ids[text] = last_id++
-            // Put an anchor on the original snippet text
-            html = html.replace(`((${text}`, `((${text}<span id="snippet-${id}"></span>`)
-          }
-
-          html = html.replace(match[0], `${text}<span 
-            class="snippet"
-            data-snippet="${snippet.replace(text, '')}"
-            onclick="gotoid('snippet-${id}')"
-          >...</span>`)
-
-        }
-
-        return html
-
-      },
 
       blur($event) {
         // Only fire if the active element is not the editor
