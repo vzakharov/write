@@ -165,6 +165,16 @@
           Enable bionic reading
         </b-check>
 
+        <!-- Count snippets as text switch -->
+        <b-check
+          v-model="settings.write.countSnippetsAsText"
+          size="sm"
+          variant="outline-secondary"
+          class="m-1"
+          switch
+        >
+          Count snippets as text
+        </b-check>
 
       </template>
 
@@ -523,7 +533,7 @@
             <b-button
               @click="
                 copyToClipboard(
-                  removeComments(( historyPreview || doc ).content)
+                  cleanContent(( historyPreview || doc ).content)
                 )
               "
               size="sm"
@@ -611,6 +621,7 @@
   import fossilDelta from 'fossil-delta'
   import { encode } from 'dahnencode'
   import Notion from '~/plugins/notion'
+  import { getSnippets, insertSnippets } from '~/plugins/snippets'
 
 
   function newDoc() {
@@ -1087,7 +1098,7 @@
 
       },
 
-      removeComments( content ) {
+      cleanContent( content ) {
         // Remove any content within /* */ (including newlines) for the sake of wordcount
         content = content.replace( /\/\*[\s\S]*?\*\//g, '' )
 
@@ -1096,6 +1107,14 @@
 
         // Convert any >3 newlines to 2 newlines
         content = content.replace( /\n{3,}/g, '\n\n' )
+
+        // Remove all lines starting with {{ or }}
+        content = content.replace( /^(\{\{|\}\}).*$/gm, '' )
+
+        // Insert snippets if countSnippetsAsText is true
+        if ( this.settings.write.countSnippetsAsText ) {
+          content = insertSnippets( content, getSnippets(content) )
+        }
 
         content = content.trim()
 
@@ -1123,7 +1142,7 @@
           wordcount += parseInt( line.match( /[0-9]+/ )[0] )
         } )
 
-        content = this.removeComments(content)
+        content = this.cleanContent(content)
 
         let words = content.split( /[^\w-]+/ ).filter( word => word.trim() )
         // console.log('words', words)
