@@ -258,7 +258,8 @@
         let snippetInsertionRegex = /(([A-Z][\w\s]+?)\.\.\.)/g
         // console.log(snippetInsertionRegex)
         let match
-        let id = 0
+        let ids = {}
+        let last_id = 1
         while ( match = snippetInsertionRegex.exec(html) ) {
 
           // console.log({match})
@@ -270,12 +271,13 @@
             console.warn('No snippet found for: ' + text)
             continue
           }
-          // console.log('Found snippet: ' + snippet)
+          let id = ids[text]
 
-          id++
-
-          // Put an anchor on the original snippet text
-          html = html.replace(`((${text}`, `((${text}<span id="snippet-${id}"></span>`)
+          if ( !ids[text] ) {
+            id = ids[text] = last_id++
+            // Put an anchor on the original snippet text
+            html = html.replace(`((${text}`, `((${text}<span id="snippet-${id}"></span>`)
+          }
 
           html = html.replace(match[0], `${text}<span 
             class="snippet"
