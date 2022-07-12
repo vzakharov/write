@@ -192,7 +192,7 @@
         v-show="settings.write.showSidebar"
         :class="{
           'position-absolute': width < 768,
-          'cool-shadow bg-white full-height p-2': true
+          'cool-shadow bg-white full-height': true
         }"
         :style="{
           opacity: width < 768 && 0.9,
@@ -202,63 +202,74 @@
         }"
         cols="8" md="4" xl="3"
       >
-
-        <!-- Add new document button -->
-        <b-button
-          class="m-1"
-          @click="
-            doc = newDoc()
-            docs = [...docs, doc]
-            $router.push({ query: { id: doc.id } })
-          "
-          size="sm"
-          variant="light"
+        <!-- Sticky div -->
+        <div
+          class="sticky-top bg-white p-2 m-0"
         >
-          🗎
-        </b-button>
 
-        <!-- Button top open/close list of docs -->
-        <b-button
-          @click="() => showDocs = !showDocs"
-          size="sm"
-          :variant="showDocs ? 'outline-secondary' : 'light'"
-          class="m-1"
-        >
-          {{ showDocs ? '🗀' : '🗁' }}
-        </b-button>
+          <!-- Add new document button -->
+          <b-button
+            class="m-1"
+            @click="
+              doc = newDoc()
+              docs = [...docs, doc]
+              $router.push({ query: { id: doc.id } })
+            "
+            size="sm"
+            variant="light"
+          >
+            🗎
+          </b-button>
+
+          <!-- Button top open/close list of docs -->
+          <b-button
+            @click="() => showDocs = !showDocs"
+            size="sm"
+            :variant="showDocs ? 'outline-secondary' : 'light'"
+            class="m-1"
+          >
+            {{ showDocs ? '🗀' : '🗁' }}
+          </b-button>
+
+          <template
+            v-if="showDocs"
+          >
+            <!-- Button to toggle 'show starred only' -->
+            <b-button
+              @click="settings.write.showStarredOnly = !settings.write.showStarredOnly"
+              size="sm"
+              :variant="settings.write.showStarredOnly ? 'outline-secondary' : 'light'"
+              class="m-1"
+            >
+              {{ settings.write.showStarredOnly ? '⭐' : '✩' }}
+            </b-button>
+
+            <!-- Button to toggle 'show archived' -->
+            <b-button
+              @click="settings.write.showArchived = !settings.write.showArchived"
+              size="sm"
+              :variant="settings.write.showArchived ? 'outline-secondary' : 'light'"
+              class="m-1"
+            >
+              🗄
+            </b-button>
+
+            <!-- Button to show/hide individual document actions -->
+            <b-button
+              @click="settings.write.showDocActions = !settings.write.showDocActions"
+              size="sm"
+              :variant="settings.write.showDocActions ? 'outline-secondary' : 'light'"
+              class="m-1"
+            >
+              …
+            </b-button>
+          </template>
+
+        </div>
 
         <template
           v-if="showDocs"
         >
-          <!-- Button to toggle 'show starred only' -->
-          <b-button
-            @click="settings.write.showStarredOnly = !settings.write.showStarredOnly"
-            size="sm"
-            :variant="settings.write.showStarredOnly ? 'outline-secondary' : 'light'"
-            class="m-1"
-          >
-            {{ settings.write.showStarredOnly ? '⭐' : '✩' }}
-          </b-button>
-
-          <!-- Button to toggle 'show archived' -->
-          <b-button
-            @click="settings.write.showArchived = !settings.write.showArchived"
-            size="sm"
-            :variant="settings.write.showArchived ? 'outline-secondary' : 'light'"
-            class="m-1"
-          >
-            🗄
-          </b-button>
-
-          <!-- Button to show/hide individual document actions -->
-          <b-button
-            @click="settings.write.showDocActions = !settings.write.showDocActions"
-            size="sm"
-            :variant="settings.write.showDocActions ? 'outline-secondary' : 'light'"
-            class="m-1"
-          >
-            …
-          </b-button>
 
           <!-- List of documents, their content cut with ellipsis -->
           <b-row

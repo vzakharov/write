@@ -30,7 +30,7 @@ function insertSnippets(content, snippets, { insertAsHtml } = {}) {
     let text = match[2]
     let snippet = snippets.find( snippet => snippet.startsWith(text) )
     if ( !snippet ) {
-      console.warn('No snippet found for: ' + text)
+      // console.warn('No snippet found for: ' + text)
       continue
     }
 
@@ -52,7 +52,7 @@ function insertSnippets(content, snippets, { insertAsHtml } = {}) {
     } else {
         
       content = content.replace(match[0], snippet)
-      console.log({content})
+      content = content.replace(/\(\(|\)\)/g, '')
   
     }
 

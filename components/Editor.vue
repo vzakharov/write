@@ -97,7 +97,8 @@
         // Break content into paragraphs, wrapping each paragraph in a respective tag
         content = content?.split(/\n\n|\n/).map( paragraph => {
 
-          paragraph = paragraph.trim()
+          paragraph = paragraph.trimStart()
+          // console.log({paragraph})
           
           let
             tag = 'p',
@@ -202,6 +203,9 @@
 
           }
 
+          // If paragraph ends with a space, replace it with a non-breaking space
+          paragraph = paragraph.replace(/\s$/, '&nbsp;')
+
           return `<${tag}${attributes}>${paragraph}</${tag}>`
 
         }).join('\n')
@@ -228,6 +232,9 @@
         }
         
         content = insertSnippets(content, snippets, { insertAsHtml: true })
+
+        // Replace all nbsps with spaces
+        content = content.replace(/\u00a0/g, ' ')
 
         return content
 
