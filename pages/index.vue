@@ -1,5 +1,5 @@
 <template>
-  <!-- A eimple editor with a sidebar. Save on Ctrl+S -->
+  <!-- A simple editor with a sidebar. Save on Ctrl+S -->
   <b-container 
     fluid
     class="px-0"
@@ -8,6 +8,7 @@
     @keydown.ctrl.s.prevent="save"
     @keydown.ctrl.shift.187.prevent="zoom(+10)"
     @keydown.ctrl.shift.189.prevent="zoom(-10)"
+    @keydown.ctrl.220="focusOndocFilter()"
   >
     <!-- Toolbar -->
     <div 
@@ -231,9 +232,38 @@
             {{ showDocs ? '🗀' : '🗁' }}
           </b-button>
 
+          <!-- Button to open the current doc in a new tab -->
+          <b-button
+            size="sm"
+            variant="light"
+            class="m-1"
+            :href="`${window.location.origin}/#${doc.id}`"
+            target="_blank"
+          >
+            🡥
+          </b-button>
+
           <template
             v-if="showDocs"
           >
+
+            <!-- Button to sort by name or created -->
+            <b-button
+              @click="
+                settings.write.sortByName = !settings.write.sortByName
+                $bvToast.toast(`Sorting by ${settings.write.sortByName ? 'name' : 'creation date'}`, {
+                  title: 'Sort order changed',
+                  autoHideDelay: 500,
+                  variant: 'info',
+                })
+              "
+              size="sm"
+              variant="light"
+              class="m-1"
+            >
+              {{ settings.write.sortByName ? '🔤' : '📅' }}
+            </b-button>
+
             <!-- Button to toggle 'show starred only' -->
             <b-button
               @click="settings.write.showStarredOnly = !settings.write.showStarredOnly"
@@ -270,10 +300,23 @@
         <template
           v-if="showDocs"
         >
-
+          <!-- Instant lookup bar -->
+          <b-row
+            class="m-0"
+          >
+            <b-input
+              v-model="docFilter"
+              id="doc-filter"
+              size="sm"
+              type="text"
+              placeholder="Search"
+              class="m-1"
+              @keydown.esc="docFilter = ''"
+            />
+          </b-row>
           <!-- List of documents, their content cut with ellipsis -->
           <b-row
-            v-for="(d, key) in displayedDocs"
+            v-for="(d, key) in filteredDocs"
             :key="key"
             class="m-0"
           >
@@ -683,6 +726,7 @@
         docs: null,
         doc: null,
         docChanged: true,
+        docFilter: '',
         window: null,
         docTimer: null,
         idleTimer: null,
@@ -710,6 +754,7 @@
             showStarredOnly: false,
             showArchived: false,
             showDocActions: true,
+            sortByName: true,
             archived: [],
             starred: [],
             downloadOnManualSave: true,
@@ -824,9 +869,13 @@
 
     computed: {
 
-      displayedDocs() {
+      filteredDocs() {
 
-        let { docs, settings: { write: { starred, archived, showStarredOnly, showArchived } } } = this
+        let { 
+          docs, 
+          docFilter,
+          settings: { write: { starred, archived, showStarredOnly, showArchived } }
+        } = this
 
         if ( showStarredOnly ) {
           docs = docs.filter( doc => starred.includes( doc.id ) )
@@ -836,8 +885,15 @@
           docs = docs.filter( doc => !archived.includes( doc.id ) )
         }
 
-        // Sort by name
-        docs = _.sortBy(docs, this.computeTitle)        
+        // Sort by name or created date
+        docs = this.settings.write.sortByName ?
+          _.sortBy(docs, this.computeTitle)
+          : _.orderBy(docs, 'created', 'desc')
+        
+        // Filter by name
+        if ( docFilter ) {
+          docs = docs.filter( doc => doc.content.toLowerCase().includes( docFilter.toLowerCase() ) )
+        }
 
         return docs
 
@@ -1018,6 +1074,24 @@
 
       },
 
+      focusOndocFilter() {
+        // If not focused on doc-filter, focus on it
+        if ( !document.activeElement?.matches('#doc-filter') ) {
+          this.settings.write.showSidebar = true
+          this.showDocs = true
+          this.$nextTick(() => {
+            document.getElementById('doc-filter')?.focus()
+          })
+        } else {
+          // If focused on doc-filter, closed the sidebar and focus on the editor
+          this.settings.write.showSidebar = false
+          this.showDocs = false
+          this.$nextTick(() => {
+            document.getElementById('editor')?.focus()
+          })
+        }
+      },
+
       zoom(delta) {
         this.settings.write.editor.zoom += delta
         this.$bvToast.toast('Zoom changed', {
@@ -1110,6 +1184,13 @@
       },
 
       cleanContent( content ) {
+
+
+        // Insert snippets if countSnippetsAsText is true
+        if ( this.settings.write.countSnippetsAsText ) {
+          content = insertSnippets( content, getSnippets(content) )
+        }
+        
         // Remove any content within /* */ (including newlines) for the sake of wordcount
         content = content.replace( /\/\*[\s\S]*?\*\//g, '' )
 
@@ -1121,11 +1202,6 @@
 
         // Remove all lines starting with {{ or }}
         content = content.replace( /^(\{\{|\}\}).*$/gm, '' )
-
-        // Insert snippets if countSnippetsAsText is true
-        if ( this.settings.write.countSnippetsAsText ) {
-          content = insertSnippets( content, getSnippets(content) )
-        }
 
         content = content.trim()
 
@@ -1327,8 +1403,8 @@
 
         handler() {
 
-          // If there was an oldDoc, download it as JSON
-          if ( this.oldDoc ) {
+          // If there was an oldDoc and it wasn't saved, download it as JSON
+          if ( this.oldDoc && !this.saved ) {
             this.downloadDocAsJSON( this.oldDoc )
           }
           this.oldDoc = this.doc

@@ -16,9 +16,14 @@ function getSnippets(content) {
 
 function insertSnippets(content, snippets, { insertAsHtml } = {}) {
 
-  // Find bits starting with an uppercase and ending with ...
-  let snippetInsertionRegex = /(([A-Z][\w\s]+?)\.\.\.)/g
-  // console.log(snippetInsertionRegex)
+  // Create an array of words that the snippets start with (don't forget to escape the regex)
+  let snippetStarts = snippets.map(snippet => snippet.split(/\s/)[0].replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&'))
+  // console.log({snippetStarts})
+  // Remove duplicates
+  snippetStarts = [...new Set(snippetStarts)]
+  // Find bits starting with a snippet word and ending with a ...
+  let snippetInsertionRegex = new RegExp(`((?:${snippetStarts.join('|')}).*?)\\.\\.\\.`, 'g')
+  // console.log({snippetInsertionRegex})
   let match
   let ids = {}
   let last_id = 1
@@ -27,13 +32,16 @@ function insertSnippets(content, snippets, { insertAsHtml } = {}) {
     // console.log({match})
 
     // Find a snippet starting with the same text
-    let text = match[2]
+    let text = match[1]
     let snippet = snippets.find( snippet => snippet.startsWith(text) )
+    // console.log({snippet})
     if ( !snippet ) {
       // console.warn('No snippet found for: ' + text)
       continue
     }
 
+    // console.log({content})
+    // console.log({insertAsHtml})
     if ( insertAsHtml ) {
 
       let id = ids[text]
@@ -42,12 +50,14 @@ function insertSnippets(content, snippets, { insertAsHtml } = {}) {
         // Put an anchor on the original snippet text
         content = content.replace(`((${text}`, `((${text}<span id="snippet-${id}"></span>`)
       }
+      // console.log({content})
 
       content = content.replace(match[0], `${text}<span 
         class="snippet"
         data-snippet="${snippet.replace(text, '')}"
         onclick="gotoid('snippet-${id}')"
       >...</span>`)
+      // console.log({content})
 
     } else {
         

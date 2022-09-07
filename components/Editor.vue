@@ -189,7 +189,7 @@
                 )
               }
 
-              let blockquoteRegex = /^(>\s+)/
+              let blockquoteRegex = /^(&gt;\s+)/
 
               if ( blockquoteRegex.test(paragraph) ) {
                 tag = 'blockquote'
@@ -214,7 +214,7 @@
         content = content.replace(/\/\*[\s\S]*?\*\//g, `<div class="comment">$&</div>`)
 
         // Make all content within {{}} hidden, witht he ability to switch back and forth
-        content = content.replace(/(<p>{{(\+?)<\/p>)([\s\S]*?)(<p>}}<\/p>)/g,
+        content = content.replace(/(<p>{{(.*?)<\/p>)([\s\S]*?)(<p>}}<\/p>)/g,
           `<div class="pre-hide">$1</div><div data-show="$2" class="hide muffled">$3</div><div class="post-hide">$4</div>`)
 
         // For every .pre-hide span, add an onclick event that toggles the .hide div
