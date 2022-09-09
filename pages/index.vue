@@ -177,6 +177,19 @@
           Count snippets as text
         </b-check>
 
+        <!-- Live editor refresh switch -->
+        <b-check
+          v-model="settings.write.editor.liveRefresh"
+          size="sm"
+          variant="outline-secondary"
+          class="m-1"
+          switch
+          v-b-popover.hover.top="'Disable this if you experience performance issues (the editor will then refresh every 5 seconds)'"
+        >
+          Live editor refresh
+        </b-check>
+
+
       </template>
 
     </div>

@@ -6,7 +6,10 @@ function getSnippets(content) {
 
   let snippets = [], match
   while ( match = snippetRegex.exec(content) ) {
-    snippets.push(match[1])
+    snippets.push({
+      text: match[1],
+      index: match.index,
+    })
   }
   // console.log({snippets})
 
@@ -17,7 +20,7 @@ function getSnippets(content) {
 function insertSnippets(content, snippets, { insertAsHtml } = {}) {
 
   // Create an array of words that the snippets start with (don't forget to escape the regex)
-  let snippetStarts = snippets.map(snippet => snippet.split(/\s/)[0].replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&'))
+  let snippetStarts = snippets.map(({ text }) => text.split(/\s/)[0].replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&'))
   // console.log({snippetStarts})
   // Remove duplicates
   snippetStarts = [...new Set(snippetStarts)]
@@ -31,9 +34,11 @@ function insertSnippets(content, snippets, { insertAsHtml } = {}) {
 
     // console.log({match})
 
-    // Find a snippet starting with the same text
+    // Find snippest starting with the same text
     let text = match[1]
-    let snippet = snippets.find( snippet => snippet.startsWith(text) )
+    let matchingSnippets = snippets.filter( snippet => snippet.text.startsWith(text) )
+    // Find the snippest with highest index lower than the match's index
+    let snippet = matchingSnippets.reverse().find( snippet => snippet.index < match.index )?.text
     // console.log({snippet})
     if ( !snippet ) {
       // console.warn('No snippet found for: ' + text)

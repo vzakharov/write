@@ -9,6 +9,7 @@
   >
     <div 
       id="editor"
+      ref="editor"
       :contenteditable="!readonly"
       :style="{
         outline: 'none',
@@ -16,7 +17,7 @@
       }"
       v-html="html"
       @input="
-        !readonly && $emit( 'input', $event.target.innerText )
+        !readonly && liveRefresh && $emit( 'input', $event.target.innerText )
       "
       @blur="blur"
       @keydown.ctrl.z.exact="undo"
@@ -60,6 +61,9 @@
       bionicReading: {
         default: false,
       },
+      liveRefresh: {
+        default: false,
+      },
     },
 
     data() {
@@ -73,7 +77,8 @@
         caretPosition,
         past: [{ content, caretPosition }],
         future: [], 
-        afterUndoOrRedo: false
+        afterUndoOrRedo: false,
+        refreshInterval: null,
         
       }
     },
@@ -419,6 +424,19 @@
           this.$nextTick( () => this.setCaretPosition(caretPosition) )
 
       },
+
+      liveRefresh: {
+        immediate: true,
+        handler(on) {
+          if ( !on ) {
+            this.refreshInterval = setInterval(() => {
+              this.$emit('input', this.$refs.editor.innerText)
+            }, 1000)
+          } else {
+            clearInterval(this.refreshInterval)
+          }
+        }
+      },
       
     },
 
@@ -435,6 +453,11 @@
           element.scrollIntoView()
         }
       }
+
+    },
+
+    beforeDestroy() {
+      clearInterval(this.refreshInterval)
     }
 
   }
