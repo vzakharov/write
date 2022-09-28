@@ -64,6 +64,9 @@
       liveRefresh: {
         default: false,
       },
+      autoSmartQuotes: {
+        default: false,
+      },
     },
 
     data() {
@@ -89,13 +92,30 @@
 
         let { content } = this
 
-        content = _.escape( content )
-
         if (!content) {
 
           return ''
 
         }
+
+        // If autoSmartQuotes is enabled, replace all straight quotes with curly quotes, unless they are preceded by a backslash.
+        if (this.autoSmartQuotes) {
+
+          // Handle correctly depending on whether it’s an opening or closing quote.
+          content = content.replace( /(?<!\\)(\s)?(["'])/g, (match, p1, p2) => {
+
+
+            // It’s an opening quote if it’s preceded by a whitespace character.
+            let opening = p1
+            let double = p2 === '"'
+            return `${p1 || ''}${opening ? double ? '“' : '‘' : double ? '”' : '’'}`
+
+          })
+
+        }
+
+        content = _.escape( content )
+
 
         let snippets = getSnippets( content )
 

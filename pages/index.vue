@@ -189,6 +189,17 @@
           Live editor refresh
         </b-check>
 
+        <!-- Auto smart quotes switch -->
+        <b-check
+          v-model="settings.write.editor.autoSmartQuotes"
+          size="sm"
+          variant="outline-secondary"
+          class="m-1"
+          switch
+        >
+          Auto smart quotes
+        </b-check>
+
 
       </template>
 
@@ -772,7 +783,9 @@
             starred: [],
             downloadOnManualSave: true,
             editor: {
-              zoom: 100
+              zoom: 100,
+              bionicReading: false,
+              autoSmartQuotes: false,
             }
           }
         },
