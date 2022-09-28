@@ -1244,7 +1244,7 @@
 
         content = this.cleanContent(content)
 
-        let words = content.split( /[^\w-]+/ ).filter( word => word.trim() )
+        let words = content.split( /[^\wа-яА-Я-]+/ ).filter( word => word.trim() )
         // console.log('words', words)
         return wordcount + words.length
 

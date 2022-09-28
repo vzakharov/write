@@ -11,6 +11,7 @@ function getSnippets(content) {
       index: match.index,
     })
   }
+  
   // console.log({snippets})
 
   return snippets
@@ -32,7 +33,7 @@ function insertSnippets(content, snippets, { insertAsHtml } = {}) {
   let last_id = 1
   while ( match = snippetInsertionRegex.exec(content) ) {
 
-    // console.log({match})
+    // console.log({match, snippets, snippetStarts, snippetInsertionRegex})
 
     // Find snippest starting with the same text
     let text = match[1]
