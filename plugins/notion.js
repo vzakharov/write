@@ -14,7 +14,8 @@ function Notion(token) {
     baseURL: process.env.NOTION_API_URL,
     headers: {
       ...token ? {
-        Authorization: `Bearer ${token}`
+        Authorization: `Bearer ${token}`,
+        'Notion-Version': '2022-02-22'
       } : {}
     }
   })

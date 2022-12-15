@@ -412,6 +412,26 @@
               </b-button>
             </b-col>
           </b-row>
+
+          <b-row
+            class="m-0"
+          >
+            <!-- Button to arhive all docs older than 1 month -->
+            <b-button
+              size="sm"
+              variant="light"
+              class="m-1"
+              @click="
+                docs.forEach(d => {
+                  if ( d.created < Date.now() - 1000 * 60 * 60 * 24 * 30 ) {
+                    is(d.id, 'archived').value = true
+                  }
+                })
+              "
+            >
+              Archive all older than 1 month
+            </b-button>
+          </b-row>
         </template>
 
         <!-- History of wordcount vs time -->
@@ -1132,7 +1152,9 @@
       },
 
       computeTitle(doc) {
-        return doc?.content?.match(/\w[\w\s-]*\w|\w/)?.[0]
+        // If there’s text {{title: blablabla}} in the first line, use that as the title
+        return doc?.content?.match(/^{{title: (.+?)}}/) 
+          ? RegExp.$1 : doc.content.match(/\w[\w\s-]*\w|\w/)?.[0]
       },
 
       formattedDateTime(date) {
@@ -1209,8 +1231,7 @@
 
       },
 
-      cleanContent( content ) {
-
+      cleanContent( content, removeLinks ) {
 
         // Insert snippets if countSnippetsAsText is true
         if ( this.settings.write.countSnippetsAsText ) {
@@ -1229,7 +1250,14 @@
         // Remove all lines starting with {{ or }}
         content = content.replace( /^(\{\{|\}\}).*$/gm, '' )
 
+        if ( removeLinks ) {
+          // Remove all markdown [links](...) (keeping just the text in square brackets)
+          content = content.replace( /\[([^\]]+)\]\([^\)]+\)/g, '$1' )
+        }
+
         content = content.trim()
+
+        window.__cleanContent = content
 
         return content
       },
@@ -1249,16 +1277,28 @@
           return parseInt( match[0].split('=')[1] )
         }
 
-        // If there are lines that start as "//words+=[number]", add the number to the wordcount
+        // // If there are lines that start as "//words+=[number]", add the number to the wordcount
+        // let wordcount = 0
+        // content.match( /^\/\/words\+=[0-9]+/gm )?.forEach( line => {
+        //   wordcount += parseInt( line.match( /[0-9]+/ )[0] )
+        // } )
+
+        // If there are lines that start as "//words[+-]=[number]", add or subtract the number to the wordcount
         let wordcount = 0
-        content.match( /^\/\/words\+=[0-9]+/gm )?.forEach( line => {
-          wordcount += parseInt( line.match( /[0-9]+/ )[0] )
+        content.match( /^\/\/words[+-]=[0-9]+/gm )?.forEach( line => {
+          let [ , sign, number ] = line.match( /^\/\/words([+-])=([0-9]+)/ )
+          wordcount += sign === '+' ? parseInt( number ) : -parseInt( number )
         } )
 
-        content = this.cleanContent(content)
+        content = this.cleanContent(content, true)
 
-        let words = content.split( /[^\wа-яА-Я-]+/ ).filter( word => word.trim() )
-        // console.log('words', words)
+        let words = content.split( /[^\wа-яА-Я-’']+/ ).filter( word => {
+          // Filter out words that don’t contain at least one letter
+          return /[a-zA-Zа-яА-Я]/.test( word )
+          // return word.trim() 
+        })
+
+        window.__words = words
         return wordcount + words.length
 
       },
@@ -1394,7 +1434,7 @@
 
             console.log('Authentication failed!')
             this.notion = null
-            this.settings.notionKey = oldKey
+            // this.settings.notionKey = oldKey
             this.$bvToast.toast( 'Invalid Notion key', {
               title: 'Error',
               autoHideDelay: 2000,
